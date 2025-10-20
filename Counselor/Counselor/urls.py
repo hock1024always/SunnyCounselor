@@ -23,4 +23,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # CounselorApp 应用路由
     path('counselor/', include('CounselorApp.urls', namespace='counselor')),
+    # CounselorAdmin 应用路由
+    path('counselor-admin/', include('CounselorAdmin.urls', namespace='counselor-admin'))
 ]

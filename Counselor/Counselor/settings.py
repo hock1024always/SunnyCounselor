@@ -46,8 +46,8 @@ INSTALLED_APPS = [
     'django_filters',
 
     # 本地应用
-    # 'CounselorApp.apps.CounselorappConfig',
     'CounselorApp',
+    'CounselorAdmin',  # 管理端app - 要放在CounselorApp后面
 ]
 
 MIDDLEWARE = [

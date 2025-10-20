@@ -145,3 +145,73 @@ INFO 2025-10-15 00:10:29,924 basehttp 66672 86752 "GET /admin/CounselorApp/consu
 INFO 2025-10-15 00:10:29,985 basehttp 66672 86752 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
 INFO 2025-10-15 00:10:34,265 basehttp 66672 86752 "GET /counselor/dashboard/stats/ HTTP/1.1" 200 10887
 INFO 2025-10-15 00:11:37,101 autoreload 10844 7764 Watching for file changes with StatReloader
+INFO 2025-10-15 17:17:43,394 autoreload 56840 48416 Watching for file changes with StatReloader
+WARNING 2025-10-15 17:17:46,047 log 56840 47032 Not Found: /
+WARNING 2025-10-15 17:17:46,048 basehttp 56840 47032 "GET / HTTP/1.1" 404 2313
+WARNING 2025-10-15 17:17:47,040 log 56840 47032 Not Found: /favicon.ico
+WARNING 2025-10-15 17:17:47,041 basehttp 56840 47032 "GET /favicon.ico HTTP/1.1" 404 2364
+INFO 2025-10-15 17:17:59,882 basehttp 56840 47032 "GET /admin/ HTTP/1.1" 200 12767
+WARNING 2025-10-15 17:18:33,405 log 56840 47032 Not Found: /dashboard/stats/
+WARNING 2025-10-15 17:18:33,406 basehttp 56840 47032 "GET /dashboard/stats/ HTTP/1.1" 404 2379
+INFO 2025-10-15 17:18:46,743 basehttp 56840 47032 "GET /counselor/dashboard/stats/ HTTP/1.1" 200 10887
+INFO 2025-10-15 17:19:17,681 basehttp 56840 47032 "GET /counselor/consultations/in-progress/ HTTP/1.1" 200 15305
+INFO 2025-10-15 17:19:18,224 basehttp 56840 47032 "GET /static/rest_framework/fonts/glyphicons-halflings-regular.woff2 HTTP/1.1" 200 18028
+INFO 2025-10-15 17:19:29,386 basehttp 56840 47032 "GET /counselor/profile/ HTTP/1.1" 200 16795
+INFO 2025-10-15 17:21:20,358 autoreload 13840 32516 Watching for file changes with StatReloader
+WARNING 2025-10-15 17:21:23,002 log 13840 7664 Method Not Allowed: /counselor/profile/service-types/
+WARNING 2025-10-15 17:21:23,002 basehttp 13840 7664 "GET /counselor/profile/service-types/ HTTP/1.1" 405 12466
+INFO 2025-10-15 17:21:52,504 basehttp 13840 7664 "GET /counselor/api/ HTTP/1.1" 200 10617
+WARNING 2025-10-15 17:22:11,468 log 13840 7664 Method Not Allowed: /counselor/schedules/bulk-create/
+WARNING 2025-10-15 17:22:11,468 basehttp 13840 7664 "GET /counselor/schedules/bulk-create/ HTTP/1.1" 405 10633
+INFO 2025-10-15 17:27:23,812 basehttp 13840 36392 "GET /admin/CounselorApp/consultation/ HTTP/1.1" 200 16250
+INFO 2025-10-15 17:27:23,862 basehttp 13840 36392 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:27:38,975 basehttp 13840 36392 "GET /admin/CounselorApp/counselor/ HTTP/1.1" 200 15384
+INFO 2025-10-15 17:27:39,005 basehttp 13840 36392 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:27:41,308 basehttp 13840 36392 "GET /admin/CounselorApp/client/ HTTP/1.1" 200 14726
+INFO 2025-10-15 17:27:41,339 basehttp 13840 36392 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:27:42,450 basehttp 13840 36392 "GET /admin/CounselorApp/schedule/ HTTP/1.1" 200 12123
+INFO 2025-10-15 17:27:42,480 basehttp 13840 36392 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:27:43,200 basehttp 13840 36392 "GET /admin/CounselorApp/review/ HTTP/1.1" 200 12440
+INFO 2025-10-15 17:27:43,284 basehttp 13840 36392 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:27:44,694 basehttp 13840 36392 "GET /admin/auth/user/ HTTP/1.1" 200 15401
+INFO 2025-10-15 17:27:45,042 basehttp 13840 36392 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:27:45,130 basehttp 13840 69048 "GET /static/admin/img/icon-no.svg HTTP/1.1" 200 560
+INFO 2025-10-15 17:28:06,532 basehttp 13840 69048 "GET /admin/CounselorApp/consultation/ HTTP/1.1" 200 16250
+INFO 2025-10-15 17:28:06,566 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:17,958 basehttp 13840 69048 "GET /counselor/dashboard/stats/ HTTP/1.1" 200 10887
+INFO 2025-10-15 17:28:34,067 basehttp 13840 69048 "GET /admin/CounselorApp/counselor/ HTTP/1.1" 200 15384
+INFO 2025-10-15 17:28:34,100 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:34,882 basehttp 13840 69048 "GET /admin/CounselorApp/client/ HTTP/1.1" 200 14726
+INFO 2025-10-15 17:28:34,910 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:35,812 basehttp 13840 69048 "GET /admin/CounselorApp/schedule/ HTTP/1.1" 200 12123
+INFO 2025-10-15 17:28:35,843 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:36,809 basehttp 13840 69048 "GET /admin/CounselorApp/review/ HTTP/1.1" 200 12440
+INFO 2025-10-15 17:28:36,838 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:38,056 basehttp 13840 69048 "GET /admin/CounselorApp/review/add/ HTTP/1.1" 200 18345
+INFO 2025-10-15 17:28:38,086 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:46,545 basehttp 13840 69048 "GET /admin/CounselorApp/schedule/ HTTP/1.1" 200 12123
+INFO 2025-10-15 17:28:46,576 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-15 17:28:48,531 basehttp 13840 69048 "GET /admin/CounselorApp/schedule/add/ HTTP/1.1" 200 15993
+INFO 2025-10-15 17:28:48,563 basehttp 13840 69048 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-20 10:58:18,818 autoreload 4552 33764 Watching for file changes with StatReloader
+INFO 2025-10-20 11:02:10,874 autoreload 65016 79068 Watching for file changes with StatReloader
+INFO 2025-10-20 11:14:35,982 autoreload 28964 2516 Watching for file changes with StatReloader
+INFO 2025-10-20 11:15:34,866 autoreload 50344 3092 Watching for file changes with StatReloader
+INFO 2025-10-20 11:21:33,827 basehttp 28964 60268 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-10-20 11:21:34,135 basehttp 28964 60268 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4232
+WARNING 2025-10-20 11:21:35,617 log 28964 60268 Not Found: /favicon.ico
+WARNING 2025-10-20 11:21:35,617 basehttp 28964 60268 "GET /favicon.ico HTTP/1.1" 404 2523
+INFO 2025-10-20 11:21:37,506 basehttp 28964 60268 "POST /admin/login/?next=/admin/ HTTP/1.1" 200 4390
+INFO 2025-10-20 11:25:27,077 basehttp 28964 60268 "POST /admin/login/?next=/admin/ HTTP/1.1" 200 4390
+INFO 2025-10-20 11:25:38,134 basehttp 28964 60268 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-10-20 11:25:38,144 basehttp 28964 60268 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4232
+INFO 2025-10-20 11:25:41,632 basehttp 28964 60268 "POST /admin/login/?next=/admin/ HTTP/1.1" 200 4390
+INFO 2025-10-20 11:26:08,391 basehttp 28964 60268 "POST /admin/login/?next=/admin/ HTTP/1.1" 200 4386
+INFO 2025-10-20 11:28:47,599 basehttp 28964 60268 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-10-20 11:28:47,621 basehttp 28964 60268 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4232
+INFO 2025-10-20 11:28:51,210 basehttp 28964 60268 "POST /admin/login/?next=/admin/ HTTP/1.1" 200 4390
+INFO 2025-10-20 11:31:31,270 autoreload 27232 34448 Watching for file changes with StatReloader
+INFO 2025-10-20 11:34:32,300 basehttp 28964 22268 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-10-20 11:34:32,319 basehttp 28964 22268 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4232
+INFO 2025-10-20 11:34:41,791 basehttp 28964 22268 "POST /admin/login/?next=/admin/ HTTP/1.1" 302 0
+INFO 2025-10-20 11:34:41,829 basehttp 28964 22268 "GET /admin/ HTTP/1.1" 200 17948
