@@ -9,18 +9,6 @@ router.register(r'schedules', views.ScheduleViewSet, basename='schedule')
 router.register(r'consultations', views.ConsultationViewSet, basename='consultation')
 router.register(r'reviews', views.ReviewViewSet, basename='review')
 
-# CounselorApp/urls.py
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from . import views
-
-app_name = 'counselor'
-
-router = DefaultRouter()
-router.register(r'schedules', views.ScheduleViewSet, basename='schedule')
-router.register(r'consultations', views.ConsultationViewSet, basename='consultation')
-router.register(r'reviews', views.ReviewViewSet, basename='review')
-
 urlpatterns = [
     # 首页和数据看板
     path('', views.DashboardView.as_view(), name='dashboard'),

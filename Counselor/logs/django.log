@@ -215,3 +215,10 @@ INFO 2025-10-20 11:34:32,300 basehttp 28964 22268 "GET /admin/ HTTP/1.1" 302 0
 INFO 2025-10-20 11:34:32,319 basehttp 28964 22268 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4232
 INFO 2025-10-20 11:34:41,791 basehttp 28964 22268 "POST /admin/login/?next=/admin/ HTTP/1.1" 302 0
 INFO 2025-10-20 11:34:41,829 basehttp 28964 22268 "GET /admin/ HTTP/1.1" 200 17948
+INFO 2025-10-20 11:51:51,312 autoreload 64396 40280 Watching for file changes with StatReloader
+INFO 2025-10-20 13:26:21,458 autoreload 85068 75048 Watching for file changes with StatReloader
+WARNING 2025-10-20 13:26:26,585 log 62188 53760 Not Found: /
+WARNING 2025-10-20 13:26:26,585 basehttp 62188 53760 "GET / HTTP/1.1" 404 2472
+INFO 2025-10-20 13:26:34,110 basehttp 62188 53760 "GET /admin/ HTTP/1.1" 200 17948
+INFO 2025-10-20 17:11:21,399 autoreload 87292 53888 Watching for file changes with StatReloader
+INFO 2025-10-21 11:04:48,581 autoreload 55488 47736 Watching for file changes with StatReloader

@@ -44,6 +44,7 @@ class DashboardStatsSerializer(serializers.Serializer):
     type_distribution = serializers.ListField()
     gender_distribution = serializers.ListField()
     age_distribution = serializers.ListField()
+    time_slot_distribution = serializers.ListField()
     average_rating = serializers.FloatField()
 
 

@@ -73,6 +73,20 @@ class DashboardStatsView(APIView):
             count=Count('id')
         ).order_by('client__age')
 
+        # 时段预约量趋势（按小时统计今日预约量）
+        time_slots = []
+        for hour in range(9, 18):  # 9:00-17:00 工作时间段
+            start_hour = hour
+            end_hour = hour + 1
+            slot_consultations = today_consultations.filter(
+                scheduled_at__hour__gte=start_hour,
+                scheduled_at__hour__lt=end_hour
+            )
+            time_slots.append({
+                'hour': f"{start_hour:02d}:00-{end_hour:02d}:00",
+                'count': slot_consultations.count()
+            })
+
         stats_data = {
             "today_stats": {
                 "total": today_consultations.count(),
@@ -84,6 +98,7 @@ class DashboardStatsView(APIView):
             "type_distribution": list(type_stats),
             "gender_distribution": list(gender_stats),
             "age_distribution": list(age_stats),
+            "time_slot_distribution": time_slots,
             "average_rating": counselor.reviews.aggregate(
                 avg_rating=Avg('rating')
             )['avg_rating'] or 0,
@@ -303,21 +318,3 @@ class UpdateServiceTypesView(UpdateAPIView):
         return self.request.user.counselor
 
 
-# 如果还缺少其他视图类，也一并添加：
-
-class UpdateProfileView(RetrieveUpdateAPIView):
-    """更新个人资料"""
-    serializer_class = CounselorSerializer
-    permission_classes = [permissions.IsAuthenticated, CounselorPermission]
-
-    def get_object(self):
-        return self.request.user.counselor
-
-
-class UpdateServiceTypesView(UpdateAPIView):
-    """更新服务类型配置"""
-    serializer_class = ServiceTypesSerializer
-    permission_classes = [permissions.IsAuthenticated, CounselorPermission]
-
-    def get_object(self):
-        return self.request.user.counselor
