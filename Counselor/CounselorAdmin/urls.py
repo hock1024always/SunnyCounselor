@@ -2,27 +2,39 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
-app_name = 'counselor_admin'
+app_name = 'CounselorAdmin'
 
 router = DefaultRouter()
 
-# 干预管理相关路由
-router.register(r'students', views.StudentViewSet, basename='student')
-router.register(r'interviews', views.InterviewViewSet, basename='interview')
-router.register(r'negative-events', views.NegativeEventViewSet, basename='negative-event')
-router.register(r'referral-units', views.ReferralUnitViewSet, basename='referral-unit')
-router.register(r'referral-histories', views.ReferralHistoryViewSet, basename='referral-history')
+# 干预管理
+router.register('interview', views.InterviewAssessmentViewSet, basename='interview')
+router.register('negative_events', views.NegativeEventViewSet, basename='negative_events')
+router.register('referral/organization', views.ReferralUnitViewSet, basename='referral-organization')
+router.register('referral/management', views.StudentReferralViewSet, basename='referral-management')
 
-# 健康宣教相关路由
-router.register(r'education-categories', views.EducationCategoryViewSet, basename='education-category')
-router.register(r'education-contents', views.EducationContentViewSet, basename='education-content')
-router.register(r'notifications', views.NotificationViewSet, basename='notification')
-router.register(r'banners', views.BannerViewSet, basename='banner')
+# 健康宣教
+router.register('categories', views.CategoryViewSet, basename='categories')
+router.register('articles', views.ArticleViewSet, basename='articles')
+router.register('notification', views.NotificationViewSet, basename='notification')
+router.register('banner', views.BannerModuleViewSet, basename='banner')
 
-# 心理咨询相关路由
-router.register(r'counselor-schedules', views.CounselorScheduleViewSet, basename='counselor-schedule')
-router.register(r'consultation-orders', views.ConsultationOrderViewSet, basename='consultation-order')
+# 心理咨询
+router.register('order', views.AppointmentViewSet, basename='order')
+router.register('consultants', views.CounselorViewSet, basename='consultants')
+
+# 文件管理和排班管理
+router.register('files', views.FileViewSet, basename='files')
+router.register('schedule', views.ScheduleViewSet, basename='schedule')
 
 urlpatterns = [
-    path('api/admin/', include(router.urls)),
+    # 认证相关
+    path('auth/login', views.login, name='login'),
+    path('auth/register', views.register, name='register'),
+    path('auth/captcha', views.captcha, name='captcha'),
+
+    # 补充的独立接口
+    path('categories/name', views.get_category_names, name='categories-name'),
+
+    # 包含所有router生成的路由
+    path('', include(router.urls)),
 ]

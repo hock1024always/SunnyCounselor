@@ -1,290 +1,589 @@
+# views.py
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter, OrderingFilter
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
+from django.core.paginator import Paginator
+from django.db.models import Q
+from .models import *
+from .serializers import *
+from .models import AdminUser
 import json
-from datetime import datetime
-
-from .models import (
-    Student, Interview, NegativeEvent, ReferralUnit, ReferralHistory,
-    EducationCategory, EducationContent, Notification, Banner,
-    CounselorSchedule, ConsultationOrder
-)
-from .serializers import (
-    StudentSerializer, InterviewSerializer, NegativeEventSerializer,
-    ReferralUnitSerializer, ReferralHistorySerializer, EducationCategorySerializer,
-    EducationContentSerializer, NotificationSerializer, BannerSerializer,
-    CounselorScheduleSerializer, ConsultationOrderSerializer,
-    StudentImportSerializer, InterviewTemplateSerializer,
-    InterviewStatisticsSerializer, EducationStatisticsSerializer
-)
-from django.db.models import Sum
 
 
-class StudentViewSet(viewsets.ModelViewSet):
-    queryset = Student.objects.all()
-    serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['school', 'grade', 'class_name', 'gender']
-    search_fields = ['name', 'student_id', 'school']
-    ordering_fields = ['created_at', 'updated_at', 'name']
-    
-    @action(detail=False, methods=['post'], serializer_class=StudentImportSerializer)
-    def import_students(self, request):
-        """导入学生名单"""
-        if pd is None:
-            return Response({'error': 'pandas库未安装，无法处理Excel文件'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        
-        serializer = StudentImportSerializer(data=request.data)
+# 基础视图类
+class BaseViewSet(viewsets.ModelViewSet):
+    def get_paginated_response(self, queryset, serializer_class, page, page_size):
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+        serializer = serializer_class(page_obj, many=True)
+        return Response({
+            'total': paginator.count,
+            'data': serializer.data
+        })
+
+
+# 访谈评估视图
+class InterviewAssessmentViewSet(BaseViewSet):
+    queryset = InterviewAssessment.objects.all()
+
+    def list(self, request):
+        query_serializer = InterviewQuerySerializer(data=request.query_params)
+        if not query_serializer.is_valid():
+            return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = query_serializer.validated_data
+        queryset = InterviewAssessment.objects.all()
+
+        # 构建查询条件
+        filters = Q()
+        if data.get('std_name'):
+            filters &= Q(student_name__icontains=data['std_name'])
+        if data.get('std_grade'):
+            filters &= Q(grade__icontains=data['std_grade'])
+        if data.get('std_class'):
+            filters &= Q(class_name__icontains=data['std_class'])
+        if data.get('std_school'):
+            filters &= Q(organization__icontains=data['std_school'])
+        if data.get('interview_status'):
+            filters &= Q(interview_status=data['interview_status'])
+        if data.get('interview_type'):
+            filters &= Q(interview_type__icontains=data['interview_type'])
+        if data.get('doctor_evaluation'):
+            filters &= Q(doctor_assessment__icontains=data['doctor_evaluation'])
+        if data.get('follow_up_plan'):
+            filters &= Q(follow_up_plan__icontains=data['follow_up_plan'])
+
+        queryset = queryset.filter(filters)
+
+        page = data.get('page', 1)
+        page_size = data.get('page_size', 20)
+
+        return self.get_paginated_response(queryset, InterviewAssessmentSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = InterviewAssessmentCreateSerializer(data=request.data)
         if serializer.is_valid():
-            file = serializer.validated_data['file']
-            try:
-                # 读取Excel文件
-                df = pd.read_excel(file)
-                created_count = 0
-                errors = []
-                
-                for index, row in df.iterrows():
-                    try:
-                        student, created = Student.objects.get_or_create(
-                            student_id=row['学号'],
-                            defaults={
-                                'name': row['姓名'],
-                                'gender': row.get('性别', 'other'),
-                                'age': row.get('年龄', 0),
-                                'school': row['学校'],
-                                'grade': row['年级'],
-                                'class_name': row['班级'],
-                                'phone': row.get('联系电话', ''),
-                                'emergency_contact': row.get('紧急联系人', ''),
-                                'emergency_phone': row.get('紧急联系电话', ''),
-                            }
-                        )
-                        if created:
-                            created_count += 1
-                    except Exception as e:
-                        errors.append(f"第{index+1}行错误: {str(e)}")
-                
-                return Response({
-                    'message': f'成功导入{created_count}名学生',
-                    'errors': errors
-                }, status=status.HTTP_201_CREATED)
-                
-            except Exception as e:
-                return Response({'error': f'文件处理错误: {str(e)}'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
+            instance = serializer.save()
+            return Response({
+                'code': '1',
+                'id': instance.id,
+                'message': '新建成功'
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    @action(detail=False, methods=['get'], serializer_class=InterviewTemplateSerializer)
-    def download_template(self, request):
-        """下载导入模板"""
-        if pd is None:
-            return Response({'error': 'pandas库未安装，无法生成Excel模板'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        
-        template_type = request.query_params.get('template_type', 'student_list')
-        
-        if template_type == 'student_list':
-            # 创建学生名单模板
-            df = pd.DataFrame(columns=['姓名', '学号', '性别', '年龄', '学校', '年级', '班级', '联系电话', '紧急联系人', '紧急联系电话'])
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = 'attachment; filename="student_import_template.xlsx"'
-            df.to_excel(response, index=False)
-            return response
-        
-        return Response({'error': '无效的模板类型'}, status=status.HTTP_400_BAD_REQUEST)
 
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except InterviewAssessment.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-class InterviewViewSet(viewsets.ModelViewSet):
-    queryset = Interview.objects.all()
-    serializer_class = InterviewSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'assessment_level', 'counselor', 'student']
-    search_fields = ['student__name', 'counselor__name', 'interview_notes']
-    ordering_fields = ['interview_date', 'created_at', 'updated_at']
-    
-    @action(detail=True, methods=['post'])
-    def end_interview(self, request, pk=None):
-        """手动结束访谈"""
-        interview = self.get_object()
-        if interview.status == 'completed':
-            return Response({'error': '访谈已结束'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        interview.status = 'completed'
-        interview.is_manual_end = True
-        interview.ended_at = datetime.now()
-        interview.save()
-        
-        return Response({'message': '访谈已结束'})
-    
+    @action(detail=False, methods=['post'])
+    def upload(self, request):
+        # 文件上传逻辑（待实现）
+        return Response({})
+
     @action(detail=False, methods=['get'])
-    def statistics(self, request):
-        """获取访谈统计信息"""
-        total = Interview.objects.count()
-        completed = Interview.objects.filter(status='completed').count()
-        pending = Interview.objects.filter(status='pending').count()
-        high_risk = Interview.objects.filter(assessment_level='high').count()
-        referral_count = ReferralHistory.objects.count()
-        
-        serializer = InterviewStatisticsSerializer({
-            'total_interviews': total,
-            'completed_interviews': completed,
-            'pending_interviews': pending,
-            'high_risk_count': high_risk,
-            'referral_count': referral_count
+    def files(self, request):
+        # 模板文件列表（待实现）
+        return Response({
+            'files': {
+                'file_name': '访谈记录模板.xlsx',
+                'file_size': '20KB'
+            }
         })
-        
-        return Response(serializer.data)
 
 
-class NegativeEventViewSet(viewsets.ModelViewSet):
+# 负面事件视图
+class NegativeEventViewSet(BaseViewSet):
     queryset = NegativeEvent.objects.all()
-    serializer_class = NegativeEventSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['event_type', 'severity', 'is_resolved']
-    search_fields = ['student__name', 'description']
-    ordering_fields = ['occurred_at', 'created_at']
+
+    def list(self, request):
+        query_serializer = NegativeEventQuerySerializer(data=request.query_params)
+        if not query_serializer.is_valid():
+            return Response(query_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = query_serializer.validated_data
+        queryset = NegativeEvent.objects.all()
+
+        # 构建查询条件
+        filters = Q()
+        if data.get('std_name'):
+            filters &= Q(student_name__icontains=data['std_name'])
+        if data.get('date_start') and data.get('date_end'):
+            filters &= Q(event_date__range=[data['date_start'], data['date_end']])
+
+        queryset = queryset.filter(filters)
+
+        page = data.get('page', 1)
+        page_size = data.get('page_size', 20)
+
+        return self.get_paginated_response(queryset, NegativeEventSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = NegativeEventCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+                'code': '1',
+                'id': instance.id,
+                'message': '新建成功'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.disabled = True  # 软删除
+            instance.save()
+            return Response({})
+        except NegativeEvent.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
 
 
-class ReferralUnitViewSet(viewsets.ModelViewSet):
-    queryset = ReferralUnit.objects.filter(is_active=True)
-    serializer_class = ReferralUnitSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['unit_type', 'is_active']
-    search_fields = ['name', 'contact_person']
-    ordering_fields = ['name', 'created_at']
+# 转介单位视图
+class ReferralUnitViewSet(BaseViewSet):
+    queryset = ReferralUnit.objects.all()
 
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        org_name = request.query_params.get('org_name')
 
-class ReferralHistoryViewSet(viewsets.ModelViewSet):
-    queryset = ReferralHistory.objects.all()
-    serializer_class = ReferralHistorySerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['referral_unit']
-    search_fields = ['student__name', 'referral_unit__name', 'reason']
-    ordering_fields = ['referral_date', 'created_at']
+        queryset = ReferralUnit.objects.all()
+        if org_name:
+            queryset = queryset.filter(unit_name__icontains=org_name)
 
+        return self.get_paginated_response(queryset, ReferralUnitSerializer, page, page_size)
 
-class EducationCategoryViewSet(viewsets.ModelViewSet):
-    queryset = EducationCategory.objects.filter(is_active=True)
-    serializer_class = EducationCategorySerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['is_active']
-    search_fields = ['name', 'description']
-    ordering_fields = ['order', 'name', 'created_at']
+    def create(self, request):
+        serializer = ReferralUnitCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+                'code': '1',
+                'id': instance.id,
+                'message': '新建成功'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except ReferralUnit.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-class EducationContentViewSet(viewsets.ModelViewSet):
-    queryset = EducationContent.objects.all()
-    serializer_class = EducationContentSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['category', 'content_type', 'is_published']
-    search_fields = ['title', 'content']
-    ordering_fields = ['published_at', 'created_at', 'view_count']
-    
-    @action(detail=True, methods=['post'])
-    def publish(self, request, pk=None):
-        """发布宣教内容"""
-        content = self.get_object()
-        content.is_published = True
-        content.published_at = datetime.now()
-        content.save()
-        return Response({'message': '内容已发布'})
-    
-    @action(detail=True, methods=['post'])
-    def unpublish(self, request, pk=None):
-        """取消发布宣教内容"""
-        content = self.get_object()
-        content.is_published = False
-        content.save()
-        return Response({'message': '内容已取消发布'})
-    
     @action(detail=False, methods=['get'])
-    def statistics(self, request):
-        """获取宣教统计信息"""
-        total = EducationContent.objects.count()
-        published = EducationContent.objects.filter(is_published=True).count()
-        total_views = EducationContent.objects.aggregate(total_views=models.Sum('view_count'))['total_views'] or 0
-        active_categories = EducationCategory.objects.filter(is_active=True).count()
-        
-        serializer = EducationStatisticsSerializer({
-            'total_contents': total,
-            'published_contents': published,
-            'total_views': total_views,
-            'active_categories': active_categories
-        })
-        
-        return Response(serializer.data)
+    def name(self, request):
+        units = ReferralUnit.objects.all()
+        serializer = ReferralUnitNameSerializer(units, many=True)
+        names = [item['unit_name'] for item in serializer.data]
+        return Response({'data': names})
 
 
-class NotificationViewSet(viewsets.ModelViewSet):
+# 学生转介视图
+class StudentReferralViewSet(BaseViewSet):
+    queryset = StudentReferral.objects.all()
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        std_name = request.query_params.get('std_name')
+
+        queryset = StudentReferral.objects.all()
+        if std_name:
+            queryset = queryset.filter(student_name__icontains=std_name)
+
+        return self.get_paginated_response(queryset, StudentReferralSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = StudentReferralCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+                'id': instance.id,
+                'message': '新建成功'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            serializer = StudentReferralCreateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except StudentReferral.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except StudentReferral.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# 栏目视图
+class CategoryViewSet(BaseViewSet):
+    queryset = Category.objects.all()
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        name = request.query_params.get('name')
+
+        queryset = Category.objects.all()
+        if name:
+            queryset = queryset.filter(category_name__icontains=name)
+
+        return self.get_paginated_response(queryset, CategorySerializer, page, page_size)
+
+    def create(self, request):
+        serializer = CategoryCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+                'id': instance.id,
+                'message': '新建成功'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            serializer = CategoryCreateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Category.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except Category.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# 宣教资讯视图
+class ArticleViewSet(BaseViewSet):
+    queryset = Article.objects.all()
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        title = request.query_params.get('title')
+
+        queryset = Article.objects.all()
+        if title:
+            queryset = queryset.filter(title__icontains=title)
+
+        return self.get_paginated_response(queryset, ArticleSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = ArticleCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+                'id': instance.id,
+                'message': '新建成功'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            serializer = ArticleCreateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Article.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except Article.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# 通知视图
+class NotificationViewSet(BaseViewSet):
     queryset = Notification.objects.all()
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['notification_type', 'status']
-    search_fields = ['title', 'content']
-    ordering_fields = ['published_at', 'created_at']
-    
-    @action(detail=True, methods=['post'])
-    def publish(self, request, pk=None):
-        """发布通知"""
-        notification = self.get_object()
-        notification.status = 'published'
-        notification.published_at = datetime.now()
-        notification.save()
-        return Response({'message': '通知已发布'})
-    
-    @action(detail=True, methods=['post'])
-    def close(self, request, pk=None):
-        """关闭通知"""
-        notification = self.get_object()
-        notification.status = 'closed'
-        notification.closed_at = datetime.now()
-        notification.save()
-        return Response({'message': '通知已关闭'})
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        title = request.query_params.get('title')
+
+        queryset = Notification.objects.all()
+        if title:
+            queryset = queryset.filter(title__icontains=title)
+
+        return self.get_paginated_response(queryset, NotificationSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = NotificationCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+                'id': instance.id,
+                'message': '新建成功'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            serializer = NotificationCreateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Notification.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except Notification.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
 
 
-class BannerViewSet(viewsets.ModelViewSet):
-    queryset = Banner.objects.filter(is_active=True)
-    serializer_class = BannerSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['position', 'is_active']
-    search_fields = ['title']
-    ordering_fields = ['order', 'start_date']
+# Banner视图
+class BannerModuleViewSet(BaseViewSet):
+    queryset = BannerModule.objects.all()
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        module = request.query_params.get('module')
+
+        queryset = BannerModule.objects.all()
+        if module:
+            queryset = queryset.filter(module_name__icontains=module)
+
+        return self.get_paginated_response(queryset, BannerModuleSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = BannerModuleCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            serializer = BannerModuleCreateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except BannerModule.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except BannerModule.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
 
 
-class CounselorScheduleViewSet(viewsets.ModelViewSet):
-    queryset = CounselorSchedule.objects.all()
-    serializer_class = CounselorScheduleSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['counselor', 'date', 'is_available']
-    search_fields = ['counselor__name']
-    ordering_fields = ['date', 'start_time']
+# 预约订单视图
+class AppointmentViewSet(BaseViewSet):
+    queryset = Appointment.objects.all()
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        name = request.query_params.get('name')
+        date_start = request.query_params.get('date_start')
+        date_end = request.query_params.get('date_end')
+        service_type = request.query_params.get('type')
+        status = request.query_params.get('status')
+
+        queryset = Appointment.objects.all()
+
+        filters = Q()
+        if name:
+            filters &= Q(client_name__icontains=name)
+        if date_start and date_end:
+            filters &= Q(appointment_date__range=[date_start, date_end])
+        if service_type:
+            filters &= Q(service_type=service_type)
+        if status:
+            filters &= Q(status=status)
+
+        queryset = queryset.filter(filters)
+
+        return self.get_paginated_response(queryset, AppointmentSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = AppointmentCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ConsultationOrderViewSet(viewsets.ModelViewSet):
-    queryset = ConsultationOrder.objects.all()
-    serializer_class = ConsultationOrderSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['payment_status']
-    search_fields = ['order_number', 'consultation__client__name']
-    ordering_fields = ['created_at', 'paid_at']
+# 咨询师视图
+class CounselorViewSet(BaseViewSet):
+    queryset = Counselor.objects.all()
+
+    def list(self, request):
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        name = request.query_params.get('name')
+        phone = request.query_params.get('phone')
+        status = request.query_params.get('status')
+
+        queryset = Counselor.objects.all()
+
+        filters = Q()
+        if name:
+            filters &= Q(name__icontains=name)
+        if phone:
+            filters &= Q(phone__icontains=phone)
+        if status:
+            filters &= Q(status=status)
+
+        queryset = queryset.filter(filters)
+
+        return self.get_paginated_response(queryset, CounselorSerializer, page, page_size)
+
+    def create(self, request):
+        serializer = CounselorCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            serializer = CounselorCreateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Counselor.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, pk=None):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({})
+        except Counselor.DoesNotExist:
+            return Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['put'])
+    def status(self, request):
+        counselor_id = request.data.get('id')
+        new_status = request.data.get('status')
+
+        try:
+            counselor = Counselor.objects.get(id=counselor_id)
+            counselor.status = new_status
+            counselor.save()
+            return Response({})
+        except Counselor.DoesNotExist:
+            return Response({'error': '咨询师不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# 认证视图（简化版）
+from rest_framework.decorators import api_view
+
+
+@api_view(['POST'])
+def login(request):
+    # 登录逻辑（待实现）
+    return Response({})
+
+
+@api_view(['POST'])
+def register(request):
+    # 注册逻辑（待实现）
+    return Response({})
+
+
+@api_view(['GET'])
+def captcha(request):
+    # 验证码逻辑（待实现）
+    return Response({})
+
+
+
+# 文件上传下载相关视图
+# 在views.py中补充以下视图类
+
+# 文件上传下载相关视图
+class FileViewSet(viewsets.ViewSet):
+
+    @action(detail=False, methods=['post'], url_path='interview/files')
+    def upload_interview_template(self, request):
+        """上传访谈记录模板文件 - POST /admin/api/admin/files/interview/files/"""
+        return Response({})
+
+    @action(detail=False, methods=['get'], url_path='interview/files')
+    def download_interview_template(self, request):
+        """下载访谈记录模板文件 - GET /admin/api/admin/files/interview/files/"""
+        files = request.query_params.getlist('files')
+        return Response({})
+
+    @action(detail=False, methods=['post'], url_path='schedule/files')
+    def upload_schedule_file(self, request):
+        """上传排班文件 - POST /admin/api/admin/files/schedule/files/"""
+        return Response({})
+
+
+# 排班管理视图
+class ScheduleViewSet(viewsets.ViewSet):
+
+    @action(detail=False, methods=['get'])
+    def work(self, request):
+        """按年月份获取排班信息 - GET /admin/api/admin/schedule/work/"""
+        year = request.query_params.get('year')
+        month = request.query_params.get('month')
+        return Response({})
+
+    @action(detail=False, methods=['post'])
+    def work(self, request):
+        """给单个日期添加排班 - POST /admin/api/admin/schedule/work/"""
+        return Response({})
+
+    @action(detail=False, methods=['get'])
+    def stop(self, request):
+        """按年份查询停诊信息 - GET /admin/api/admin/schedule/stop/"""
+        year = request.query_params.get('year')
+        return Response({})
+
+    @action(detail=False, methods=['put'])
+    def stop(self, request):
+        """添加/修改停诊安排 - PUT /admin/api/admin/schedule/stop/"""
+        return Response({})
+
+
+# 栏目名称查询视图函数
+@api_view(['GET'])
+def get_category_names(request):
+    """只查询栏目名称 - GET /admin/api/admin/categories/name"""
+    categories = Category.objects.all().values_list('category_name', flat=True)
+    return Response({'data': list(categories)})

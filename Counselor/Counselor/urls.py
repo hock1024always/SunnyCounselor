@@ -18,11 +18,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-
 urlpatterns = [
+    # Django admin
     path("admin/", admin.site.urls),
-    # CounselorApp 应用路由
+
+    # CounselorApp 应用路由（前端用户端）
     path('counselor/', include('CounselorApp.urls', namespace='counselor')),
-    # CounselorAdmin 应用路由
-    path('counselor-admin/', include('CounselorAdmin.urls', namespace='counselor-admin'))
+
+    # CounselorAdmin 应用路由（管理后台API）
+    path('admin/api/admin/', include('CounselorAdmin.urls', namespace='counselor-admin'))
 ]

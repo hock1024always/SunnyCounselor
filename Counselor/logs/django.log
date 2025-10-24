@@ -222,3 +222,92 @@ WARNING 2025-10-20 13:26:26,585 basehttp 62188 53760 "GET / HTTP/1.1" 404 2472
 INFO 2025-10-20 13:26:34,110 basehttp 62188 53760 "GET /admin/ HTTP/1.1" 200 17948
 INFO 2025-10-20 17:11:21,399 autoreload 87292 53888 Watching for file changes with StatReloader
 INFO 2025-10-21 11:04:48,581 autoreload 55488 47736 Watching for file changes with StatReloader
+INFO 2025-10-22 21:28:03,576 autoreload 23656 84936 Watching for file changes with StatReloader
+WARNING 2025-10-22 21:28:07,017 log 23656 43216 Not Found: /
+WARNING 2025-10-22 21:28:07,017 basehttp 23656 43216 "GET / HTTP/1.1" 404 2472
+WARNING 2025-10-22 21:28:07,969 log 23656 43216 Not Found: /favicon.ico
+WARNING 2025-10-22 21:28:07,970 basehttp 23656 43216 "GET /favicon.ico HTTP/1.1" 404 2523
+INFO 2025-10-22 21:28:13,297 basehttp 23656 46304 "GET /admin/ HTTP/1.1" 200 17948
+WARNING 2025-10-22 22:48:40,942 log 23656 76772 Not Found: /
+WARNING 2025-10-22 22:48:40,943 basehttp 23656 76772 "GET / HTTP/1.1" 404 2472
+WARNING 2025-10-22 22:48:41,827 log 23656 76772 Not Found: /favicon.ico
+WARNING 2025-10-22 22:48:41,828 basehttp 23656 76772 "GET /favicon.ico HTTP/1.1" 404 2523
+INFO 2025-10-22 22:49:34,965 basehttp 23656 76772 "GET /admin/ HTTP/1.1" 200 17948
+INFO 2025-10-23 21:50:08,180 autoreload 76976 51168 Watching for file changes with StatReloader
+WARNING 2025-10-23 21:50:11,572 log 76976 63668 Not Found: /
+WARNING 2025-10-23 21:50:11,573 basehttp 76976 63668 "GET / HTTP/1.1" 404 2472
+WARNING 2025-10-23 21:50:12,683 log 76976 63668 Not Found: /favicon.ico
+WARNING 2025-10-23 21:50:12,684 basehttp 76976 63668 "GET /favicon.ico HTTP/1.1" 404 2523
+INFO 2025-10-23 21:50:18,910 basehttp 76976 63668 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-10-23 21:50:18,941 basehttp 76976 63668 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4232
+INFO 2025-10-23 21:50:23,246 basehttp 76976 63668 "POST /admin/login/?next=/admin/ HTTP/1.1" 200 4386
+INFO 2025-10-23 21:50:28,666 basehttp 76976 63668 "POST /admin/login/?next=/admin/ HTTP/1.1" 302 0
+INFO 2025-10-23 21:50:28,687 basehttp 76976 63668 "GET /admin/ HTTP/1.1" 200 19175
+INFO 2025-10-23 21:50:31,222 basehttp 76976 63668 "GET /admin/CounselorAdmin/cancellation/ HTTP/1.1" 200 18501
+INFO 2025-10-23 21:50:31,273 basehttp 76976 71600 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:31,366 basehttp 76976 63668 "GET /static/admin/css/changelists.css HTTP/1.1" 200 6878
+INFO 2025-10-23 21:50:31,392 basehttp 76976 5836 "GET /static/admin/img/search.svg HTTP/1.1" 200 458
+INFO 2025-10-23 21:50:31,519 basehttp 76976 5836 "GET /static/admin/js/filters.js HTTP/1.1" 200 978
+INFO 2025-10-23 21:50:31,530 basehttp 76976 5836 "GET /static/admin/img/tooltag-add.svg HTTP/1.1" 200 331
+INFO 2025-10-23 21:50:35,190 basehttp 76976 5836 "GET /admin/CounselorAdmin/category/ HTTP/1.1" 200 17322
+INFO 2025-10-23 21:50:35,227 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:36,963 basehttp 76976 5836 "GET /admin/CounselorAdmin/category/add/ HTTP/1.1" 200 19131
+INFO 2025-10-23 21:50:37,146 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:39,762 basehttp 76976 5836 "GET /admin/CounselorAdmin/adminuser/add/ HTTP/1.1" 200 20390
+INFO 2025-10-23 21:50:39,797 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:42,561 basehttp 76976 5836 "GET /admin/CounselorAdmin/interviewassessment/add/ HTTP/1.1" 200 23116
+INFO 2025-10-23 21:50:42,597 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:45,315 basehttp 76976 5836 "GET /admin/CounselorAdmin/bannermodule/add/ HTTP/1.1" 200 19784
+INFO 2025-10-23 21:50:45,348 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:47,180 basehttp 76976 5836 "GET /admin/CounselorAdmin/appointment/add/ HTTP/1.1" 200 26318
+INFO 2025-10-23 21:50:47,219 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+INFO 2025-10-23 21:50:47,489 basehttp 76976 5836 "GET /static/admin/img/icon-deletelink.svg HTTP/1.1" 200 392
+INFO 2025-10-23 21:51:18,599 basehttp 76976 5836 "GET /admin/CounselorApp/consultation/add/ HTTP/1.1" 200 26481
+INFO 2025-10-23 21:51:18,640 basehttp 76976 5836 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+WARNING 2025-10-23 21:52:17,026 log 76976 5836 Not Found: /admin/api/admin/categories/
+WARNING 2025-10-23 21:52:17,027 basehttp 76976 5836 "GET /admin/api/admin/categories/ HTTP/1.1" 404 10257
+WARNING 2025-10-23 21:53:47,583 log 76976 5836 Not Found: /admin/api/admin/
+WARNING 2025-10-23 21:53:47,583 basehttp 76976 5836 "GET /admin/api/admin/ HTTP/1.1" 404 10224
+WARNING 2025-10-23 21:54:00,257 log 76976 5836 Not Found: /admin/api/admin/categories/
+WARNING 2025-10-23 21:54:00,257 basehttp 76976 5836 "GET /admin/api/admin/categories/ HTTP/1.1" 404 10257
+WARNING 2025-10-23 21:54:16,251 log 76976 5836 Not Found: /admin/api/admin/consultants/
+WARNING 2025-10-23 21:54:16,252 basehttp 76976 5836 "GET /admin/api/admin/consultants/ HTTP/1.1" 404 10260
+INFO 2025-10-23 21:59:58,209 autoreload 60748 62780 Watching for file changes with StatReloader
+WARNING 2025-10-23 22:00:06,859 log 60748 12388 Not Found: /admin/api/admin/categories/
+WARNING 2025-10-23 22:00:06,860 basehttp 60748 12388 "GET /admin/api/admin/categories/ HTTP/1.1" 404 10257
+WARNING 2025-10-23 22:00:18,837 log 60748 12388 Not Found: /admin/api/admin/consultants/
+WARNING 2025-10-23 22:00:18,838 basehttp 60748 12388 "GET /admin/api/admin/consultants/ HTTP/1.1" 404 10260
+WARNING 2025-10-23 22:01:27,346 log 60748 12388 Not Found: /admin/api/admin/categories/
+WARNING 2025-10-23 22:01:27,347 basehttp 60748 12388 "GET /admin/api/admin/categories/ HTTP/1.1" 404 10257
+INFO 2025-10-23 22:01:45,616 basehttp 60748 12388 "GET /admin/CounselorApp/consultation/add/ HTTP/1.1" 200 26481
+INFO 2025-10-23 22:01:45,650 basehttp 60748 12388 "GET /admin/jsi18n/ HTTP/1.1" 200 9327
+WARNING 2025-10-23 22:03:31,060 log 60748 2024 Forbidden (CSRF cookie not set.): /admin/api/admin/interview
+WARNING 2025-10-23 22:03:31,061 basehttp 60748 2024 "POST /admin/api/admin/interview HTTP/1.1" 403 2786
+INFO 2025-10-23 22:06:59,485 autoreload 60748 62780 D:\github\SunnyCounselor\Counselor\Counselor\settings.py changed, reloading.
+INFO 2025-10-23 22:07:11,825 autoreload 76936 79720 Watching for file changes with StatReloader
+WARNING 2025-10-23 22:07:17,902 log 76936 30244 Forbidden (CSRF cookie not set.): /admin/api/admin/interview
+WARNING 2025-10-23 22:07:17,902 basehttp 76936 30244 "POST /admin/api/admin/interview HTTP/1.1" 403 2786
+INFO 2025-10-23 22:07:25,175 basehttp 76936 30244 "GET /admin/api/admin/interview/files?files= HTTP/1.1" 302 0
+INFO 2025-10-23 22:07:25,198 basehttp 76936 30244 "GET /admin/login/?next=/admin/api/admin/interview/files%3Ffiles%3D HTTP/1.1" 200 4300
+WARNING 2025-10-23 22:07:37,313 log 76936 30244 Forbidden (CSRF token missing.): /admin/api/admin/interview
+WARNING 2025-10-23 22:07:37,314 basehttp 76936 30244 "POST /admin/api/admin/interview HTTP/1.1" 403 2486
+INFO 2025-10-23 22:08:06,455 basehttp 76936 30244 "GET /admin/api/admin/interview?page=1&page_size=10&std_name=%E5%BC%A0%E4%B8%89&std_grade=%E4%B8%89%E5%B9%B4%E7%BA%A7&std_class=2&std_school=%E7%AC%AC%E4%B8%80%E4%B8%AD%E5%AD%A6&interview_cout=1&interview_status=%E6%9C%AA%E5%BC%80%E5%A7%8B&interview_type=%E6%97%A5%E5%B8%B8%E5%85%B3%E6%B3%A8&doctor_evaluation=%E8%89%AF%E5%A5%BD&follow_up_plan=%E6%8C%81%E7%BB%AD%E5%85%B3%E6%B3%A8 HTTP/1.1" 302 0
+INFO 2025-10-23 22:08:06,461 basehttp 76936 30244 "GET /admin/login/?next=/admin/api/admin/interview%3Fpage%3D1%26page_size%3D10%26std_name%3D%25E5%25BC%25A0%25E4%25B8%2589%26std_grade%3D%25E4%25B8%2589%25E5%25B9%25B4%25E7%25BA%25A7%26std_class%3D2%26std_school%3D%25E7%25AC%25AC%25E4%25B8%2580%25E4%25B8%25AD%25E5%25AD%25A6%26interview_cout%3D1%26interview_status%3D%25E6%259C%25AA%25E5%25BC%2580%25E5%25A7%258B%26interview_type%3D%25E6%2597%25A5%25E5%25B8%25B8%25E5%2585%25B3%25E6%25B3%25A8%26doctor_evaluation%3D%25E8%2589%25AF%25E5%25A5%25BD%26follow_up_plan%3D%25E6%258C%2581%25E7%25BB%25AD%25E5%2585%25B3%25E6%25B3%25A8 HTTP/1.1" 200 5184
+INFO 2025-10-23 22:10:10,091 autoreload 76936 79720 D:\github\SunnyCounselor\Counselor\Counselor\settings.py changed, reloading.
+INFO 2025-10-23 22:10:23,570 autoreload 58480 25132 Watching for file changes with StatReloader
+INFO 2025-10-23 22:10:27,008 basehttp 58480 85052 "GET /admin/api/admin/interview?page=1&page_size=10&std_name=%E5%BC%A0%E4%B8%89&std_grade=%E4%B8%89%E5%B9%B4%E7%BA%A7&std_class=2&std_school=%E7%AC%AC%E4%B8%80%E4%B8%AD%E5%AD%A6&interview_cout=1&interview_status=%E6%9C%AA%E5%BC%80%E5%A7%8B&interview_type=%E6%97%A5%E5%B8%B8%E5%85%B3%E6%B3%A8&doctor_evaluation=%E8%89%AF%E5%A5%BD&follow_up_plan=%E6%8C%81%E7%BB%AD%E5%85%B3%E6%B3%A8 HTTP/1.1" 302 0
+INFO 2025-10-23 22:10:27,034 basehttp 58480 85052 "GET /admin/login/?next=/admin/api/admin/interview%3Fpage%3D1%26page_size%3D10%26std_name%3D%25E5%25BC%25A0%25E4%25B8%2589%26std_grade%3D%25E4%25B8%2589%25E5%25B9%25B4%25E7%25BA%25A7%26std_class%3D2%26std_school%3D%25E7%25AC%25AC%25E4%25B8%2580%25E4%25B8%25AD%25E5%25AD%25A6%26interview_cout%3D1%26interview_status%3D%25E6%259C%25AA%25E5%25BC%2580%25E5%25A7%258B%26interview_type%3D%25E6%2597%25A5%25E5%25B8%25B8%25E5%2585%25B3%25E6%25B3%25A8%26doctor_evaluation%3D%25E8%2589%25AF%25E5%25A5%25BD%26follow_up_plan%3D%25E6%258C%2581%25E7%25BB%25AD%25E5%2585%25B3%25E6%25B3%25A8 HTTP/1.1" 200 5184
+INFO 2025-10-23 22:11:08,859 basehttp 58480 85052 "GET /admin/api/admin/banner?page&page_size&module HTTP/1.1" 302 0
+INFO 2025-10-23 22:11:08,864 basehttp 58480 85052 "GET /admin/login/?next=/admin/api/admin/banner%3Fpage%26page_size%26module HTTP/1.1" 200 4322
+INFO 2025-10-23 22:11:24,483 basehttp 58480 85052 "GET /admin/api/admin/order?page&page_size&name&date_start&date_end&type&status HTTP/1.1" 302 0
+INFO 2025-10-23 22:11:24,489 basehttp 58480 85052 "GET /admin/login/?next=/admin/api/admin/order%3Fpage%26page_size%26name%26date_start%26date_end%26type%26status HTTP/1.1" 200 4404
+INFO 2025-10-23 22:17:44,973 autoreload 58480 25132 D:\github\SunnyCounselor\Counselor\Counselor\settings.py changed, reloading.
+INFO 2025-10-23 22:17:45,535 autoreload 63884 43176 Watching for file changes with StatReloader
+INFO 2025-10-23 22:20:30,044 basehttp 63884 3012 "GET /admin/api/admin/order?page&page_size&name&date_start&date_end&type&status HTTP/1.1" 302 0
+INFO 2025-10-23 22:20:30,070 basehttp 63884 3012 "GET /admin/login/?next=/admin/api/admin/order%3Fpage%26page_size%26name%26date_start%26date_end%26type%26status HTTP/1.1" 200 4404
+INFO 2025-10-23 22:21:39,713 basehttp 63884 3012 "GET /admin/api/admin/order?page&page_size&name&date_start&date_end&type&status HTTP/1.1" 302 0
+INFO 2025-10-23 22:21:39,717 basehttp 63884 3012 "GET /admin/login/?next=/admin/api/admin/order%3Fpage%26page_size%26name%26date_start%26date_end%26type%26status HTTP/1.1" 200 4404
+INFO 2025-10-24 14:39:37,367 autoreload 58976 28940 Watching for file changes with StatReloader
+INFO 2025-10-24 14:49:32,565 basehttp 58976 87944 "GET /admin/CounselorApp/consultation/add/ HTTP/1.1" 200 26481
+WARNING 2025-10-24 14:49:33,769 log 58976 87944 Not Found: /favicon.ico
+WARNING 2025-10-24 14:49:33,770 basehttp 58976 87944 "GET /favicon.ico HTTP/1.1" 404 2523

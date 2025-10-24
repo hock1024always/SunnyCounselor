@@ -1,5 +1,5 @@
 # 依赖安装
-1. pip install -r requirements.txt
+1. pip install -r requirement.txt
 # 数据库迁移
 1. python manage.py makemigrations
 2. python manage.py migrate
