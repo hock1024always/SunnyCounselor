@@ -119,11 +119,11 @@ class Appointment(models.Model):
         ('危机干预', '危机干预'),
     ]
 
-    # 预约状态选项，包含未开始、进行中和已结束
+    # 预约状态选项，包含未开始、进行中和已完成
     STATUS_CHOICES = [
         ('未开始', '未开始'),
         ('进行中', '进行中'),
-        ('已结束', '已结束'),
+        ('已完成', '已完成'),
     ]
 
     # 性别选项，包含男和女
@@ -280,7 +280,10 @@ class Article(models.Model):
     read_count = models.IntegerField(default=0, verbose_name='阅读人数')  # 整数类型的阅读人数，默认值为0
     created_by = models.CharField(max_length=50, blank=True, verbose_name='创建人')  # 字符串类型的创建人字段，允许为空
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')  # 自动记录创建时间
-    video = models.URLField(max_length=500, blank=True, verbose_name='视频URL')  # URL类型的视频字段，允许为空
+    video = models.URLField(max_length=500, blank=True, verbose_name='视频URL')  # URL类型的视频字段，允许为空（用于外部链接）
+    video_path = models.CharField(max_length=255, blank=True, verbose_name='视频文件路径')  # 视频文件路径字段，存储相对路径，允许为空（用于上传的视频文件）
+    resource = models.CharField(max_length=200, blank=True, verbose_name='资源')  # 资源字段
+    type = models.CharField(max_length=50, blank=True, verbose_name='类型')  # 类型字段
 
     class Meta:
         """
@@ -341,6 +344,7 @@ class StudentReferral(models.Model):
                                       verbose_name='转介单位')  # 转介单位字段，外键关联，允许为空
     referral_reason = models.TextField(blank=True, verbose_name='转介原因')  # 转介原因字段，允许为空
     referral_date = models.DateField(blank=True, null=True, verbose_name='转介时间')  # 转介时间字段，允许为空
+    image_path = models.CharField(max_length=255, blank=True, verbose_name='图片路径')  # 图片路径字段，存储相对路径，允许为空
     created_by = models.CharField(max_length=50, blank=True, verbose_name='创建人')  # 创建人字段，允许为空
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')  # 创建时间字段，自动记录创建时间
 

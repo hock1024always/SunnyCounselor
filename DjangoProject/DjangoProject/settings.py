@@ -25,7 +25,8 @@ SECRET_KEY = "django-insecure-zb_w^(wy!6vzogo!zhmy_-r!4ym3ecwyj@gob#_5!#s7ts8m(=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# 允许所有主机访问（测试环境）
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -39,11 +40,13 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",  # RESTful API
     "rest_framework.authtoken",  # DRF自带的token认证
+    "corsheaders",  # CORS跨域支持
     'CounselorAdmin.apps.CounseloradminConfig',
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # CORS中间件，需要放在CommonMiddleware之前
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -122,10 +125,12 @@ USE_TZ = False
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+# 静态文件根目录（用于生产环境收集静态文件）
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
+# 开发环境静态文件目录（实际存储上传文件的目录）
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "staticfiles"),
+    os.path.join(BASE_DIR, "static"),
 ]
 
 # Default primary key field type
@@ -156,3 +161,26 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
     ]
 }
+
+# CORS配置 - 允许所有来源、方法和头部（测试环境）
+CORS_ALLOW_ALL_ORIGINS = True  # 允许所有来源
+CORS_ALLOW_CREDENTIALS = True  # 允许携带凭证
+CORS_ALLOW_METHODS = [  # 允许的HTTP方法
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [  # 允许的请求头
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]

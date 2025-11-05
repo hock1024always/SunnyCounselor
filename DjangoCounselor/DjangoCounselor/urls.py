@@ -1,8 +1,8 @@
 """
-URL configuration for DjangoProject project.
+URL configuration for DjangoCounselor project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -16,17 +16,8 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
-from django.conf import settings
-from django.conf.urls.static import static
-# from rest_framework.authtoken import views
+from django.urls import path
 
 urlpatterns = [
-    # path('api-token-auth/', views.obtain_auth_token),
-    path('counselor_admin/', include('CounselorAdmin.urls')),
     path("admin/", admin.site.urls),
 ]
-
-# 配置静态文件URL（开发环境和生产环境都适用）
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else settings.STATIC_ROOT)

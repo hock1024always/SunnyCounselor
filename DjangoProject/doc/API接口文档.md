@@ -1,0 +1,1710 @@
+# API接口文档
+
+## 统一说明
+
+### 鉴权方式
+所有接口（除登录注册相关）都需要在请求体JSON中包含以下字段进行鉴权：
+- `user_id`: 用户ID（通过登录接口获取）
+- `token`: 认证令牌（通过登录接口获取）
+
+**注意**：
+- 所有接口使用 **POST** 方法
+- 所有参数都在请求体JSON中，**不在请求头设置鉴权信息**
+- **不使用路径参数**（id等都在body中传递）
+
+---
+
+## 一、用户认证模块
+
+### 1.1 发送邮箱验证码
+
+**URL**: `POST /counselor_admin/auth/register/send_code`
+
+**请求JSON**:
+```json
+{
+    "email": "user@example.com",
+    "user_name": "testuser",
+    "phone": "13800138000"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "message": "验证码已发送"
+}
+```
+
+---
+
+### 1.2 用户注册
+
+**URL**: `POST /counselor_admin/auth/register`
+
+**请求JSON**:
+```json
+{
+    "email": "user@example.com",
+    "user_name": "testuser",
+    "phone": "13800138000",
+    "password": "password123",
+    "verify_code": "123456",
+    "gender": "男"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "message": "注册成功"
+}
+```
+
+---
+
+### 1.3 用户登录
+
+**URL**: `POST /counselor_admin/auth/login`
+
+**请求JSON**:
+```json
+{
+    "email": "user@example.com",
+    "password": "password123",
+    "captcha": "true"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": "2"
+}
+```
+
+---
+
+### 1.4 获取图形验证码
+
+**URL**: `GET /counselor_admin/auth/captcha`
+
+**请求**: 无参数
+
+**响应JSON**:
+```json
+{
+    "captcha_key": "abc123",
+    "captcha_image_base64": "data:image/png;base64,..."
+}
+```
+
+---
+
+### 1.5 获取用户信息
+
+**URL**: `POST /counselor_admin/user/info`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "user_info": {
+        "user_name": "testuser",
+        "email": "user@example.com",
+        "phone": "13800138000"
+    }
+}
+```
+
+---
+
+## 二、干预管理模块
+
+### 2.1 访谈评估 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/interview/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "std_name": "张三",
+    "std_grade": "高一",
+    "std_class": "1班",
+    "std_school": "测试学校",
+    "interview_cout": 1,
+    "interview_status": "待处理",
+    "interview_type": "初步访谈",
+    "doctor_evaluation": "良好",
+    "follow_up_plan": "继续观察"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "10",
+    "data": [
+        {
+            "id": "1",
+            "std_name": "张三",
+            "std_grade": "高一",
+            "std_class": "1班",
+            "std_school": "测试学校",
+            "interview_count": "1",
+            "interview_status": "待处理",
+            "interview_type": "初步访谈",
+            "doctor_evaluation": "良好",
+            "follow_up_plan": "继续观察",
+            "create_time": "2024-01-01"
+        }
+    ]
+}
+```
+
+---
+
+### 2.2 访谈评估 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/interview/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "std_name": "张三",
+    "std_grade": "高一",
+    "std_class": "1班",
+    "std_school": "测试学校",
+    "interview_count": 1,
+    "interview_status": "待处理",
+    "interview_type": "初步访谈",
+    "doctor_evaluation": "良好",
+    "follow_up_plan": "继续观察"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "id": "1",
+    "meesage": "新建成功"
+}
+```
+
+---
+
+### 2.3 访谈评估 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/interview/delete`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 2.4 访谈评估 - 批量导入
+
+**URL**: `POST /counselor_admin/api/admin/interview/upload`
+
+**说明**: 上传.xls或.xlsx文件，解析并批量导入访谈记录到数据库。文件保存到`static/interview_form`目录。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `file`: Excel文件（必填，.xls或.xlsx格式）
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+
+**Excel文件列名要求**（中文列名）：
+
+| 列名 | 说明 | 是否必填 | 示例 |
+|------|------|---------|------|
+| 学生姓名 | 学生姓名 | 是 | 张三 |
+| 所属机构 | 学生所属机构/学校 | 否 | 测试学校 |
+| 年级 | 学生年级 | 否 | 高一 |
+| 班级 | 学生班级 | 否 | 1班 |
+| 访谈次数 | 访谈次数（数字） | 否（默认为1） | 2 |
+| 访谈状态 | 访谈状态：待处理/进行中/已完成 | 否（默认为"待处理"） | 已完成 |
+| 访谈类型 | 访谈类型 | 否 | 日常关注 |
+| 医生评定 | 医生评定内容 | 否 | 良好 |
+| 后续计划 | 后续计划内容 | 否 | 持续关注 |
+
+**注意**: 
+- 第一行必须是列名（表头）
+- "学生姓名"列是必填的，其他列可以为空
+- 支持的中文列名变体：
+  - 姓名、学生姓名
+  - 机构、所属机构、std_school
+  - 年级、std_grade
+  - 班级、std_class
+  - 访谈次数、interview_count
+  - 访谈状态、interview_status
+  - 访谈类型、类型、interview_type
+  - 医生评定、doctor_evaluation
+  - 后续计划、follow_up_plan
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "成功导入10条记录",
+    "success_count": 10,
+    "total_rows": 12,
+    "error_count": 2,
+    "errors": [
+        {
+            "row": 3,
+            "error": "学生姓名不能为空"
+        }
+    ]
+}
+```
+
+---
+
+### 2.5 负面事件 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/negative_events/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "std_name": "张三",
+    "date_start": "2024-01-01",
+    "date_end": "2024-12-31"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "5",
+    "data": [
+        {
+            "id": "1",
+            "std_name": "张三",
+            "std_grade": "高一",
+            "std_class": "1班",
+            "std_school": "测试学校",
+            "event_content": "事件内容",
+            "event_date": "2024-01-15",
+            "creator": "管理员",
+            "create_time": "2024-01-15 10:30"
+        }
+    ]
+}
+```
+
+---
+
+### 2.6 负面事件 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/negative_events/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "std_name": "张三",
+    "std_grade": "高一",
+    "std_class": "1班",
+    "std_school": "测试学校",
+    "event_date": "2024-01-15",
+    "event_content": "事件内容",
+    "creator": "管理员"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "id": "1",
+    "message": "新建成功"
+}
+```
+
+---
+
+### 2.7 负面事件 - 删除
+
+**说明**: 软删除，将对应ID的负面事件的`disabled`字段设置为`true`，不实际删除记录。
+
+**URL**: `POST /counselor_admin/api/admin/negative_events/delete`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 2.7 转介单位 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/referral/organization/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "org_name": "医院"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "3",
+    "data": [
+        {
+            "id": "1",
+            "org_name": "某某医院",
+            "org_address": "地址",
+            "phone": "13800138000",
+            "creator": "管理员",
+            "creat_time": "2024-01-01 10:00"
+        }
+    ]
+}
+```
+
+---
+
+### 2.8 转介单位 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/referral/organization/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "org_name": "某某医院",
+    "org_address": "地址",
+    "phone": "13800138000",
+    "creator": "管理员"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "id": "1",
+    "message": "新建成功"
+}
+```
+
+---
+
+### 2.9 转介单位 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/referral/organization/delete`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 2.10 转介单位 - 名称列表
+
+**URL**: `POST /counselor_admin/api/admin/referral/organization/name`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "data": ["某某医院", "某某诊所"]
+}
+```
+
+---
+
+### 2.11 转介管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/referral/management/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "std_name": "张三"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "5",
+    "data": [
+        {
+            "id": "1",
+            "std_name": "张三",
+            "std_grade": "高一",
+            "std_class": "1班",
+            "std_school": "测试学校",
+            "std_gender": "男",
+            "org_name": "某某医院",
+            "reason": "转介原因",
+            "time": "2024-01-15",
+            "image": "/static/referral_image/张三_1705206400000.jpg"
+        }
+    ]
+}
+```
+
+**说明**: 
+- `image`字段：图片访问URL路径，如果记录没有上传图片则为空字符串`""`
+- 图片可以通过返回的`image`字段的URL路径进行访问和下载
+
+---
+
+### 2.12 转介管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/referral/management/create`
+
+**说明**: 创建转介记录，支持图片上传。图片保存到`static/referral_image`目录。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+- `name`: 学生姓名（必填）
+- `organization`: 转介单位/机构名称（可选）
+- `reason`: 转介原因（可选）
+- `date`: 转介日期，格式：`YYYY-MM-DD`（可选）
+- `image`: 图片文件（可选，支持jpg、jpeg、png、gif、bmp、webp格式）
+
+**图片命名规则**: 上传的图片会自动重命名为`{name}_{timestamp}.{扩展名}`格式，确保文件名唯一。
+
+**请求示例**:
+```
+Content-Type: multipart/form-data
+
+user_id: 2
+token: 619cf629-b84e-41a0-adca-42d07a3ddd0e
+name: 荤宇泽
+organization: dolore minim
+reason: ea nostrud laboris
+date: 2025-02-07
+image: [文件]
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+**错误响应**:
+- 图片格式不支持：返回400错误，提示"不支持的图片格式，请上传jpg、png、gif、bmp或webp格式的图片"
+
+---
+
+### 2.13 转介管理 - 更新
+
+**URL**: `POST /counselor_admin/api/admin/referral/management/update`
+
+**说明**: 更新转介记录，支持更新所有字段包括图片。如果上传了新图片，旧图片会被自动删除。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+- `id`: 记录ID（必填）
+- `name`: 学生姓名（可选）
+- `std_gender`: 性别（可选）
+- `std_school`: 学校（可选）
+- `std_grade`: 年级（可选）
+- `std_class`: 班级（可选）
+- `organization`: 转介单位/机构名称（可选）
+- `reason`: 转介原因（可选）
+- `date`: 转介日期，格式：`YYYY-MM-DD`（可选）
+- `image`: 新图片文件（可选，如果提供会替换旧图片，支持jpg、jpeg、png、gif、bmp、webp格式）
+
+**请求示例**:
+```
+Content-Type: multipart/form-data
+
+user_id: 2
+token: 619cf629-b84e-41a0-adca-42d07a3ddd0e
+id: 1
+name: 荤宇泽
+organization: dolore minim
+reason: ea nostrud laboris
+date: 2025-02-07
+image: [新图片文件，可选]
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "更新成功"
+}
+```
+
+**注意**: 
+- 只有提供的字段才会被更新，未提供的字段保持不变
+- 如果上传了新图片，系统会自动删除旧图片文件
+
+---
+
+### 2.14 转介管理 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/referral/management/delete`
+
+**说明**: 删除转介记录，同时会删除对应的图片文件（如果存在）。
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "删除成功"
+}
+```
+
+**注意**: 
+- 删除记录时会自动删除对应的图片文件
+- 如果图片文件删除失败，不会影响数据库记录的删除
+
+---
+
+## 三、健康宣教模块
+
+### 3.1 栏目管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/categories/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "name": "心理健康"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "5",
+    "data": [
+        {
+            "id": "1",
+            "name": "心理健康",
+            "order": "1",
+            "create_time": "2024-01-01 10:00:00",
+            "creator": "管理员"
+        }
+    ]
+}
+```
+
+---
+
+### 3.2 栏目管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/categories/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "name": "心理健康",
+    "order": 1,
+    "creator": "管理员"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+---
+
+### 3.3 栏目管理 - 更新
+
+**URL**: `POST /counselor_admin/api/admin/categories/update`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1,
+    "name": "心理健康",
+    "order": 2
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 3.4 栏目管理 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/categories/delete`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 3.5 栏目管理 - 名称列表
+
+**URL**: `POST /counselor_admin/api/admin/categories/name`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "data": ["心理健康", "情绪管理"]
+}
+```
+
+---
+
+### 3.6 宣教管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/articles/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "title": "如何管理情绪"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "10",
+    "data": [
+        {
+            "id": "1",
+            "title": "如何管理情绪",
+            "category_name": "心理健康",
+            "content": "文章内容",
+            "collect_count": 10,
+            "like_count": 20,
+            "read_count": 100,
+            "created_by": "作者",
+            "created_time": "2024-01-01 10:00:00",
+            "video": "视频链接"
+        }
+    ]
+}
+```
+
+---
+
+### 3.7 宣教管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/articles/create`
+
+**说明**: 创建宣教资讯，支持视频文件上传。视频保存到`static/article_video`目录。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+- `category_name`: 栏目名称（必填）
+- `title`: 标题（必填）
+- `type`: 类型（必填）
+- `author`: 作者（必填，也是创建人）
+- `resource`: 资源（必填）
+- `content`: 内容（必填）
+- `create_time`: 创建时间，格式：`YYYY-MM-DD HH:MM:SS` 或 `YYYY-MM-DD`（可选）
+- `video`: 视频文件（可选，支持mp4、avi、mov、wmv、flv、mkv、webm格式）
+
+**视频命名规则**: 上传的视频会自动重命名为`{timestamp}_{author}.{扩展名}`格式，确保文件名唯一。
+
+**请求示例**:
+```
+Content-Type: multipart/form-data
+
+user_id: 2
+token: 619cf629-b84e-41a0-adca-42d07a3ddd0e
+category_name: 心理健康
+title: 如何管理情绪
+type: 科普文章
+author: 张三
+resource: 原创
+content: 文章内容
+create_time: 2024-01-15 10:00:00
+video: [视频文件，可选]
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+**错误响应**:
+- 必填字段缺失：返回400错误，提示具体缺失的字段
+- 栏目不存在：返回400错误，提示"栏目不存在"
+- 视频格式不支持：返回400错误，提示"不支持的视频格式，请上传mp4、avi、mov、wmv、flv、mkv或webm格式的视频"
+
+---
+
+### 3.8 宣教管理 - 详情查询
+
+**URL**: `POST /counselor_admin/api/admin/articles/detail`
+
+**说明**: 查询一条资讯的详情信息，包括视频URL。
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "data": {
+        "id": "1",
+        "title": "如何管理情绪",
+        "category_name": "心理健康",
+        "content": "文章内容",
+        "collect_count": 10,
+        "like_count": 20,
+        "read_count": 100,
+        "created_by": "张三",
+        "created_time": "2024-01-15 10:00:00",
+        "video": "/static/article_video/1705206400000_张三.mp4",
+        "resource": "原创",
+        "type": "科普文章"
+    }
+}
+```
+
+**说明**: 
+- `video`字段：如果有上传的视频文件，返回`/static/article_video/文件名`格式的URL；如果只有外部视频链接，返回外部链接；如果都没有则为空字符串
+
+---
+
+### 3.9 宣教管理 - 更新
+
+**URL**: `POST /counselor_admin/api/admin/articles/update`
+
+**说明**: 更新宣教资讯，支持更新所有字段包括视频。如果上传了新视频，旧视频会被自动删除。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+- `id`: 记录ID（必填）
+- `category_name`: 栏目名称（可选）
+- `title`: 标题（可选）
+- `type`: 类型（可选）
+- `author`: 作者（可选）
+- `resource`: 资源（可选）
+- `content`: 内容（可选）
+- `video`: 新视频文件或外部视频链接（可选，如果提供文件会替换旧视频，如果提供链接会清空上传的文件路径）
+
+**请求示例**:
+```
+Content-Type: multipart/form-data
+
+user_id: 2
+token: 619cf629-b84e-41a0-adca-42d07a3ddd0e
+id: 1
+title: 如何管理情绪（更新）
+content: 更新后的内容
+author: 张三
+resource: 原创
+type: 科普文章
+video: [新视频文件，可选]
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "更新成功"
+}
+```
+
+**注意**: 
+- 只有提供的字段才会被更新，未提供的字段保持不变
+- 如果上传了新视频文件，系统会自动删除旧视频文件
+- 如果提供的是外部视频链接（在data中而不是FILES中），会清空上传的文件路径
+
+---
+
+### 3.10 宣教管理 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/articles/delete`
+
+**说明**: 删除宣教资讯，同时会删除对应的视频文件（如果存在）。
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "删除成功"
+}
+```
+
+**注意**: 
+- 删除记录时会自动删除对应的视频文件
+- 如果视频文件删除失败，不会影响数据库记录的删除
+
+---
+
+### 3.11 通知管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/notification/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "title": "通知标题"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "5",
+    "data": [
+        {
+            "id": "1",
+            "title": "通知标题",
+            "isPublished": true,
+            "creator": "管理员",
+            "create_time": "2024-01-01 10:00:00"
+        }
+    ]
+}
+```
+
+---
+
+### 3.11 通知管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/notification/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "title": "通知标题",
+    "content": "通知内容",
+    "isPublished": true
+}
+```
+
+**响应JSON**:
+```json
+{
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+---
+
+### 3.12 通知管理 - 更新
+
+**URL**: `POST /counselor_admin/api/admin/notification/update`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1,
+    "title": "更新后的标题",
+    "content": "更新后的内容",
+    "isPublished": false
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 3.13 通知管理 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/notification/delete`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 3.14 Banner管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/banner/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "module": "首页"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "3",
+    "data": [
+        {
+            "id": "1",
+            "module": "首页",
+            "count": "5",
+            "images": [
+                "/static/banner_photo/20240101_1_1.jpg",
+                "/static/banner_photo/20240101_1_2.jpg",
+                "/static/banner_photo/20240101_1_3.jpg",
+                "/static/banner_photo/20240101_1_4.jpg",
+                "/static/banner_photo/20240101_1_5.jpg"
+            ],
+            "creator": "管理员",
+            "create_time": "2024-01-01 10:00:00"
+        }
+    ]
+}
+```
+
+**说明**: 
+- `images`字段：图片URL数组，如果记录没有上传图片则为空数组`[]`
+- 图片可以通过返回的`images`数组中的URL路径进行访问和下载
+
+---
+
+### 3.15 Banner管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/banner/create`
+
+**说明**: 创建Banner，支持多图片文件上传。图片保存到`static/banner_photo`目录。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+- `module`: 模块名称（必填）
+- `images`: 图片文件数组（可选，支持多个图片文件上传，支持jpg、jpeg、png、gif、bmp、webp格式）
+
+**图片命名规则**: 上传的图片会自动重命名为`{date}_{banner_id}_{序号}.{扩展名}`格式（例如：`20240101_1_1.jpg`），确保文件名唯一。
+- `date`: 日期格式为`YYYYMMDD`（如：20240101）
+- `banner_id`: 创建的banner记录ID
+- `序号`: 从1开始的序号
+
+**请求示例**:
+```
+Content-Type: multipart/form-data
+
+user_id: 2
+token: 619cf629-b84e-41a0-adca-42d07a3ddd0e
+module: 首页
+images: [图片文件1]
+images: [图片文件2]
+images: [图片文件3]
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+**注意**: 
+- 支持一次上传多个图片文件
+- 不支持的图片格式会被自动跳过
+- `count`字段会自动设置为实际上传的图片数量
+
+---
+
+### 3.16 Banner管理 - 更新
+
+**URL**: `POST /counselor_admin/api/admin/banner/update`
+
+**说明**: 更新Banner，支持更新模块名称和图片。如果上传了新图片，旧图片会被自动删除。
+
+**鉴权**: 需要在`multipart/form-data`表单中提供`user_id`和`token`字段进行认证。
+
+**请求方式**: `multipart/form-data`
+
+**请求字段**:
+- `user_id`: 用户ID（必填）
+- `token`: 认证令牌（必填）
+- `id`: Banner ID（必填）
+- `module`: 模块名称（可选）
+- `images`: 新图片文件数组（可选，如果提供会替换所有旧图片，支持多个图片文件上传）
+
+**请求示例**:
+```
+Content-Type: multipart/form-data
+
+user_id: 2
+token: 619cf629-b84e-41a0-adca-42d07a3ddd0e
+id: 1
+module: 首页
+images: [新图片文件1]
+images: [新图片文件2]
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "更新成功"
+}
+```
+
+**注意**: 
+- 只有提供的字段才会被更新，未提供的字段保持不变
+- 如果上传了新图片文件，系统会自动删除所有旧图片文件
+- 上传的图片会重新命名为`{date}_{banner_id}_{序号}.{扩展名}`格式
+- `count`字段会自动更新为实际上传的图片数量
+
+---
+
+### 3.17 Banner管理 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/banner/delete`
+
+**说明**: 删除Banner，同时会删除对应的所有图片文件（如果存在）。
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{
+    "code": "1",
+    "message": "删除成功"
+}
+```
+
+**注意**: 
+- 删除记录时会自动删除对应的所有图片文件
+- 如果图片文件删除失败，不会影响数据库记录的删除
+
+---
+
+## 四、心理咨询模块
+
+### 4.1 咨询统计 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/order/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "name": "客户姓名",
+    "date_start": "2024-01-01",
+    "date_end": "2024-12-31",
+    "type": "心理咨询",
+    "status": "已完成"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "message": "查询成功",
+    "total": "20",
+    "data": [
+        {
+            "id": "1",
+            "order_id": "ORD20240101120000abc123",
+            "name": "客户姓名",
+            "gender": "男",
+            "age": "25",
+            "type": "心理咨询",
+            "key_word": "焦虑",
+            "date": "2024-01-15",
+            "time": "10:00-11:00",
+            "commit_time": "2024-01-01 10:00:00",
+            "finish_time": "2024-01-15 11:00:00",
+            "status": "已完成"
+        }
+    ]
+}
+```
+
+---
+
+### 4.2 咨询统计 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/order/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "name": "客户姓名",
+    "gender": "男",
+    "age": 25,
+    "type": "心理咨询",
+    "key_word": "焦虑",
+    "date": "2024-01-15",
+    "time": "10:00-11:00"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+---
+
+### 4.3 咨询师管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/consultants/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "page": 1,
+    "page_size": 10,
+    "name": "咨询师姓名",
+    "phone": "13800138000",
+    "status": "启用"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "total": "5",
+    "data": [
+        {
+            "id": "1",
+            "name": "咨询师姓名",
+            "gender": "女",
+            "phone": "13800138000",
+            "organization": "机构名称",
+            "skills": ["焦虑症", "抑郁症"],
+            "status": "启用"
+        }
+    ]
+}
+```
+
+---
+
+### 4.4 咨询师管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/consultants/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "name": "咨询师姓名",
+    "gender": "女",
+    "phone": "13800138000",
+    "organization": "机构名称",
+    "skills": ["焦虑症", "抑郁症"],
+    "status": "启用"
+}
+```
+
+**响应JSON**:
+```json
+{
+    "id": "1",
+    "message": "创建成功"
+}
+```
+
+---
+
+### 4.5 咨询师管理 - 更新
+
+**URL**: `POST /counselor_admin/api/admin/consultants/update`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1,
+    "name": "咨询师姓名",
+    "phone": "13800138000",
+    "organization": "机构名称",
+    "skills": ["焦虑症", "抑郁症", "压力管理"],
+    "status": "启用"
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 4.6 咨询师管理 - 删除
+
+**URL**: `POST /counselor_admin/api/admin/consultants/delete`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 4.7 咨询师管理 - 状态更新
+
+**URL**: `POST /counselor_admin/api/admin/consults/status`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "id": 1,
+    "status": "禁用"
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 4.8 排班管理 - 列表查询
+
+**URL**: `POST /counselor_admin/api/admin/schedule/work/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "year": 2024,
+    "month": 1
+}
+```
+
+**响应JSON**:
+```json
+{
+    "data": [
+        {
+            "date": "2024-01-01",
+            "schedules": [
+                {
+                    "id": "1",
+                    "name": "咨询师姓名",
+                    "work_time": ["09:00-10:00", "14:00-15:00"]
+                }
+            ]
+        }
+    ]
+}
+```
+
+---
+
+### 4.9 排班管理 - 创建
+
+**URL**: `POST /counselor_admin/api/admin/schedule/work/create`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "year": 2024,
+    "month": 1,
+    "date": 15,
+    "schedules": {
+        "name": "咨询师姓名",
+        "work_time": "09:00",
+        "stop_work_time": "10:00"
+    }
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+### 4.10 排班管理 - 停诊列表
+
+**URL**: `POST /counselor_admin/api/admin/schedule/stop/list`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "year": 2024
+}
+```
+
+**响应JSON**:
+```json
+{
+    "data": [
+        {
+            "id": "1",
+            "name": "咨询师姓名",
+            "stop_schedules": [
+                {
+                    "start_time": "2024-01-15 09:00",
+                    "end_time": "2024-01-15 18:00"
+                }
+            ]
+        }
+    ]
+}
+```
+
+---
+
+### 4.11 排班管理 - 停诊更新
+
+**URL**: `POST /counselor_admin/api/admin/schedule/stop/update`
+
+**请求JSON**:
+```json
+{
+    "user_id": 2,
+    "token": "619cf629-b84e-41a0-adca-42d07a3ddd0e",
+    "data": [
+        {
+            "name": "咨询师姓名",
+            "start_time": "2024-01-15 09:00",
+            "end_time": "2024-01-15 18:00"
+        }
+    ]
+}
+```
+
+**响应JSON**:
+```json
+{}
+```
+
+---
+
+## 错误响应格式
+
+### 认证失败（401）
+```json
+{
+    "message": "认证失败",
+    "detail": "请求体中缺少 user_id 或 token"
+}
+```
+
+或
+
+```json
+{
+    "message": "认证失败",
+    "detail": "用户ID与Token不匹配或Token已过期"
+}
+```
+
+### 参数错误（400）
+```json
+{
+    "message": "缺少必要参数",
+    "detail": "具体错误信息"
+}
+```
+
+### 记录不存在（404）
+```json
+{
+    "message": "记录不存在"
+}
+```
+
+---
+
+## 注意事项
+
+1. **所有接口都需要鉴权**（除登录注册相关接口）
+2. **所有接口使用POST方法**
+3. **所有参数都在请求体JSON中**，包括分页参数、过滤参数、id等
+4. **不需要在请求头设置任何鉴权信息**
+5. **Token有效期为7天**，过期后需要重新登录
+6. **分页参数page和page_size** 通常默认为 `page=1, page_size=10`
+7. **日期格式** 统一使用 `YYYY-MM-DD` 或 `YYYY-MM-DD HH:MM:SS`
+
+---
+
+## 干预管理 - 模板文件
+
+### 查询模板列表
+- 路径：`POST api/interview/files`
+- 说明：列出`templates/`目录下的所有模板文件
+- 鉴权：请求体内提供 `user_id`、`token`
+
+请求示例：
+```json
+{
+  "user_id": 1,
+  "token": "xxxxx"
+}
+```
+
+成功响应：
+```json
+{
+  "files": [
+    { "file_name": "测试结果数据导入模板.xls", "file_size": 12345 },
+    { "file_name": "中小学生心理评估访谈提纲记录表.docx", "file_size": 67890 }
+  ]
+}
+```
+
+### 上传模板文件
+- 路径：`POST /counselor_admin/api/admin/interview/files/upload`
+- 说明：向`templates/`目录上传模板文件（支持多个文件上传）
+- 鉴权：表单内提供 `user_id`、`token`
+- 请求：`multipart/form-data`，字段包含：
+  - `file` 或 `files`: 要上传的文件（单个文件用`file`，多个文件用`files`）
+  - `user_id`: 用户ID（必填）
+  - `token`: 认证令牌（必填）
+
+**注意**: 
+- 支持单个文件上传（使用`file`字段）或多个文件上传（使用`files`字段）
+- 多个文件时，在表单中使用同一个字段名`files`上传多个文件
+
+单文件上传成功响应：
+```json
+{ "message": "上传成功", "file": "文件名.ext" }
+```
+
+多文件上传成功响应：
+```json
+{ "message": "上传成功", "files": ["文件名1.ext", "文件名2.ext"], "count": 2 }
+```
+
+### 模板下载
+- 路径：`POST api/admin/interview/files/download`
+- 说明：按文件名下载模板；单个文件直接返回，多个文件将打包为zip返回
+- 鉴权：请求体内提供 `user_id`、`token`
+- 请求体字段：
+  - `filenames`: 文件名数组（必填）
+
+请求示例：
+```json
+{
+  "user_id": 1,
+  "token": "xxxxx",
+  "filenames": [
+    "不自我伤害契约书.docx",
+    "中小学生心理评估访谈提纲记录表.docx",
+    "测试结果数据导入模板.xls"
+  ]
+}
+```
+
+单文件：以文件流形式直接返回
+
+多文件：返回`application/zip`，文件名默认为`templates_bundle.zip`；若部分文件不存在，响应头`X-Missing-Files`列出缺失文件名。
+
