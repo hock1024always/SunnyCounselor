@@ -23,8 +23,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     # path('api-token-auth/', views.obtain_auth_token),
-    path('counselor_admin/', include('CounselorAdmin.urls')),
     path("admin/", admin.site.urls),
+    path('counselor_admin/', include('CounselorAdmin.urls')),
+    path('consultant/', include('Consultant.urls')),
 ]
 
 # 配置静态文件URL（开发环境和生产环境都适用）

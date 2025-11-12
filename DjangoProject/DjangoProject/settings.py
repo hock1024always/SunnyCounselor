@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",  # DRF自带的token认证
     "corsheaders",  # CORS跨域支持
     'CounselorAdmin.apps.CounseloradminConfig',
+    'Consultant.apps.ConsultantConfig',
 ]
 
 MIDDLEWARE = [

@@ -63,12 +63,16 @@ from CounselorAdmin.views.counseling import (
     consultants_update,
     consultants_delete,
     consultants_status_update,
+    consultants_id_name_list,
     # 排班管理
     schedule_work_list,
     schedule_work_create,
     schedule_files_upload,
     schedule_stop_list,
+    schedule_stop_create,
     schedule_stop_update,
+    schedule_stop_delete,
+    schedule_stop_list_conflict,
 )
 
 urlpatterns = [
@@ -140,6 +144,8 @@ urlpatterns = [
     
     # 咨询师管理
     path('api/admin/consultants/list', consultants_list),  # POST
+    path('api/admin/consultants/list/profile', consultants_list),  # POST (别名，兼容)
+    path('api/admin/consultants/list/id_name', consultants_id_name_list),  # POST
     path('api/admin/consultants/create', consultants_create),  # POST
     path('api/admin/consultants/update', consultants_update),  # POST
     path('api/admin/consultants/delete', consultants_delete),  # POST
@@ -150,5 +156,8 @@ urlpatterns = [
     path('api/admin/schedule/work/create', schedule_work_create),  # POST
     path('api/admin/schedule/files', schedule_files_upload),  # POST
     path('api/admin/schedule/stop/list', schedule_stop_list),  # POST
+    path('api/admin/schedule/stop/create', schedule_stop_create),  # POST
     path('api/admin/schedule/stop/update', schedule_stop_update),  # POST
+    path('api/admin/schedule/stop/delete', schedule_stop_delete),  # POST
+    path('api/admin/schedule/stop/list/conflict', schedule_stop_list_conflict),  # POST
 ]

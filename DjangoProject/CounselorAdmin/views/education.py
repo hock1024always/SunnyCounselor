@@ -113,9 +113,15 @@ def categories_delete(request):
 @permission_classes([AllowAny])  # 禁用DRF默认权限检查
 @require_body_auth  # 业务逻辑中的鉴权
 def categories_name_list(request):
-    """POST 只查询栏目的名称"""
-    names = list(Category.objects.values_list('category_name', flat=True))
-    return Response({'data': names})
+    """POST 查询所有栏目的id和名称"""
+    categories = Category.objects.all().order_by('sort_order', 'created_time')
+    result_data = []
+    for category in categories:
+        result_data.append({
+            'id': str(category.id),
+            'category_name': category.category_name,
+        })
+    return Response({'data': result_data})
 
 
 # ==================== 宣教管理 ====================
@@ -181,8 +187,8 @@ def articles_create(request):
     
     try:
         # 检查必填字段
-        if not data.get('category_name'):
-            return Response({'code': '0', 'message': '栏目名称不能为空'}, status=status.HTTP_400_BAD_REQUEST)
+        if not data.get('category_id') and not data.get('category_name'):
+            return Response({'code': '0', 'message': '栏目ID或栏目名称不能为空'}, status=status.HTTP_400_BAD_REQUEST)
         if not data.get('title'):
             return Response({'code': '0', 'message': '标题不能为空'}, status=status.HTTP_400_BAD_REQUEST)
         if not data.get('type'):
@@ -194,11 +200,17 @@ def articles_create(request):
         if not data.get('content'):
             return Response({'code': '0', 'message': '内容不能为空'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # 根据栏目名称查找栏目
-        category_name = data.get('category_name')
-        category = Category.objects.filter(category_name=category_name).first()
-        if not category:
-            return Response({'code': '0', 'message': '栏目不存在'}, status=status.HTTP_400_BAD_REQUEST)
+        # 优先使用 category_id 查找栏目，如果没有则使用 category_name（向后兼容）
+        category = None
+        if data.get('category_id'):
+            try:
+                category = Category.objects.get(id=data.get('category_id'))
+            except Category.DoesNotExist:
+                return Response({'code': '0', 'message': '栏目不存在'}, status=status.HTTP_400_BAD_REQUEST)
+        elif data.get('category_name'):
+            category = Category.objects.filter(category_name=data.get('category_name')).first()
+            if not category:
+                return Response({'code': '0', 'message': '栏目不存在'}, status=status.HTTP_400_BAD_REQUEST)
         
         # 处理视频文件上传
         video_path = ''

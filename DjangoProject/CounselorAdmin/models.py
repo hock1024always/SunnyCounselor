@@ -82,6 +82,8 @@ class Counselor(AbstractBaseUser):
     organization = models.CharField(max_length=100, blank=True, verbose_name='所属机构')
     # 擅长标签，使用JSON格式存储，可以为空
     expertise_tags = models.JSONField(blank=True, null=True, verbose_name='擅长标签')
+    # 支持的咨询方式类型，使用JSON格式存储，可以为空
+    serve_type = models.JSONField(blank=True, null=True, verbose_name='咨询方式类型')
     # 状态，默认为'启用'
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='启用', verbose_name='状态')
 
@@ -150,6 +152,8 @@ class Appointment(models.Model):
     appointment_date = models.DateField(blank=True, null=True, verbose_name='预约日期')
     # 预约时段，如上午、下午等，允许为空
     time_slot = models.CharField(max_length=50, blank=True, verbose_name='预约时段')
+    # 联系方式，允许为空
+    contact = models.CharField(max_length=100, blank=True, null=True, verbose_name='联系方式')
     # 提交时间，自动记录创建时间
     submit_time = models.DateTimeField(auto_now_add=True, verbose_name='提交时间')
     # 结束时间，允许为空
@@ -570,6 +574,7 @@ class Cancellation(models.Model):
     counselor = models.ForeignKey(Counselor, on_delete=models.CASCADE, null=False, blank=False, verbose_name='咨询师')  # 关联咨询师，外键 (NOT NULL)
     cancel_start = models.DateTimeField(null=False, blank=False, verbose_name='停诊开始时间')  # 停诊开始时间 (NOT NULL)
     cancel_end = models.DateTimeField(null=False, blank=False, verbose_name='停诊结束时间')  # 停诊结束时间 (NOT NULL)
+    reason = models.TextField(blank=True, null=True, verbose_name='停诊原因')  # 停诊原因，可为空
     created_by = models.CharField(max_length=50, blank=True, verbose_name='创建人')  # 创建人，可为空
     created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')  # 创建时间，自动记录
 
