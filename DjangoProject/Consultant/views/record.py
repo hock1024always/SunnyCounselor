@@ -27,9 +27,24 @@ from Consultant.serializers.record import (
     ConsultationSessionCreateSerializer
 )
 from Consultant.utils import require_body_auth
+import json
 
 
 # ==================== 咨询档案 ====================
+
+def _convert_crisis_status_to_string(crisis_status):
+    """将危机状态数组转换为字符串存储"""
+    if not crisis_status:
+        return ''
+    if isinstance(crisis_status, list):
+        # 过滤空值并转换为字符串
+        filtered = [str(s).strip() for s in crisis_status if s and str(s).strip()]
+        if filtered:
+            # 使用JSON格式存储，便于后续解析
+            return json.dumps(filtered, ensure_ascii=False)
+        return ''
+    # 如果已经是字符串，直接返回
+    return str(crisis_status) if crisis_status else ''
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # 禁用DRF默认权限检查
@@ -39,8 +54,14 @@ def record_list(request):
     counselor = request.counselor
     data = request.data
     
-    page = int(data.get('page', 1))
-    page_size = int(data.get('page_size', 10))
+    try:
+        page = int(data.get('page', 1))
+        page_size = int(data.get('page_size', 10))
+    except (ValueError, TypeError):
+        return Response({
+            'code': 400,
+            'message': '分页参数错误'
+        }, status=status.HTTP_400_BAD_REQUEST)
     std_name = data.get('std_name', '')
     std_grade = data.get('std_grade', '')
     std_class = data.get('std_class', '')
@@ -122,10 +143,28 @@ def record_create(request):
         counselor=counselor,
         created_by=counselor,
         interview_count=int(data.get('interview_count', 0)),
+        interview_type=data.get('interview_type', ''),
         current_status='active' if data.get('interview_status') == '进行中' else 'completed',
         client_type='student',
         gender='男'  # 默认值
     )
+    
+    # 如果传入了 doctor_evaluation 或 follow_up_plan，创建第一条会话记录
+    doctor_evaluation = data.get('doctor_evaluation', '')
+    follow_up_plan = data.get('follow_up_plan', '')
+    
+    if doctor_evaluation or follow_up_plan:
+        ConsultationSession.objects.create(
+            record=record,
+            session_number=1,
+            interview_date=timezone.now().date(),
+            interview_time='',
+            visit_status='completed',
+            doctor_evaluation=doctor_evaluation,
+            follow_up_plan=follow_up_plan,
+            consultant_name=counselor.name,
+            created_by=counselor
+        )
     
     return Response({
         'code': 0,
@@ -207,9 +246,43 @@ def session_create(request):
     """
     POST 新建一条咨询记录
     业务逻辑鉴权：确保只能为自己的档案创建会话
+    支持 JSON 和 form-data 两种格式
     """
+    import os
+    import time
+    from django.conf import settings
+    
     counselor = request.counselor
-    serializer = ConsultationSessionCreateSerializer(data=request.data)
+    
+    # 支持 form-data 和 JSON 两种格式
+    # 如果是 form-data，需要从 request.data 中获取文本字段，从 request.FILES 中获取文件
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    
+    # 处理 form-data 中的数组字段（如 crisisStatus）
+    # 在 form-data 中，数组可能以 JSON 字符串形式传递
+    if 'crisisStatus' in data:
+        crisis_status_value = data.get('crisisStatus')
+        if isinstance(crisis_status_value, str):
+            try:
+                # 尝试解析 JSON 字符串
+                crisis_status_value = json.loads(crisis_status_value)
+            except (json.JSONDecodeError, TypeError):
+                # 如果不是 JSON，尝试按逗号分隔
+                if ',' in crisis_status_value:
+                    crisis_status_value = [s.strip() for s in crisis_status_value.split(',') if s.strip()]
+                else:
+                    crisis_status_value = [crisis_status_value] if crisis_status_value else []
+        data['crisisStatus'] = crisis_status_value if isinstance(crisis_status_value, list) else []
+    
+    # 处理 attachImages（如果是 JSON 字符串）
+    if 'attachImages' in data and isinstance(data.get('attachImages'), str):
+        try:
+            data['attachImages'] = json.loads(data.get('attachImages'))
+        except (json.JSONDecodeError, TypeError):
+            data['attachImages'] = []
+    
+    # 验证数据（使用序列化器验证非文件字段）
+    serializer = ConsultationSessionCreateSerializer(data=data)
     
     if not serializer.is_valid():
         return Response({
@@ -218,8 +291,8 @@ def session_create(request):
             'detail': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    data = serializer.validated_data
-    record_id = data.get('record_id')
+    validated_data = serializer.validated_data
+    record_id = validated_data.get('record_id')
     
     if not record_id:
         return Response({
@@ -235,23 +308,87 @@ def session_create(request):
         max_session = record.sessions.aggregate(Max('session_number'))
         next_number = (max_session['session_number__max'] or 0) + 1
         
+        # 处理签名图片文件上传
+        signature_image = ''
+        if 'signatureImage' in request.FILES:
+            uploaded_file = request.FILES['signatureImage']
+            # 检查文件类型（图片格式）
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+            if file_ext not in allowed_extensions:
+                return Response({
+                    'code': 400,
+                    'message': '签名图片格式不支持，请上传jpg、png、gif、bmp或webp格式的图片'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 确保目录存在
+            signature_dir = os.path.join(settings.BASE_DIR, 'static', 'session_signature')
+            os.makedirs(signature_dir, exist_ok=True)
+            
+            # 生成唯一文件名
+            timestamp = int(time.time() * 1000)
+            file_name = f"signature_{record_id}_{timestamp}{file_ext}"
+            
+            # 保存文件
+            file_path = os.path.join(signature_dir, file_name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            
+            # 保存相对路径到数据库（相对于static目录）
+            signature_image = f"session_signature/{file_name}"
+        elif 'signatureImage' in validated_data:
+            signature_image = validated_data.get('signatureImage', '')
+        
+        # 处理附加图片文件上传（支持多个文件）
+        attach_images = []
+        if 'attachImages' in request.FILES:
+            uploaded_files = request.FILES.getlist('attachImages')
+            
+            # 确保目录存在
+            attach_dir = os.path.join(settings.BASE_DIR, 'static', 'session_attach')
+            os.makedirs(attach_dir, exist_ok=True)
+            
+            for index, uploaded_file in enumerate(uploaded_files):
+                # 检查文件类型（图片格式）
+                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+                file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+                if file_ext not in allowed_extensions:
+                    # 如果格式不支持，跳过这个文件
+                    continue
+                
+                # 生成唯一文件名
+                timestamp = int(time.time() * 1000)
+                file_name = f"attach_{record_id}_{timestamp}_{index + 1}{file_ext}"
+                
+                # 保存文件
+                file_path = os.path.join(attach_dir, file_name)
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
+                
+                # 保存相对路径（相对于static目录）
+                attach_images.append(f"session_attach/{file_name}")
+        elif 'attachImages' in validated_data:
+            attach_images = validated_data.get('attachImages', [])
+        
         # 创建会话
         session = ConsultationSession.objects.create(
             record=record,
             session_number=next_number,
-            interview_date=data.get('date') or timezone.now().date(),
-            interview_time=data.get('time', ''),
-            duration=int(data.get('duration', 0)) if data.get('duration') and data.get('duration').isdigit() else None,
-            visit_status=data.get('visitStatus', 'scheduled'),
-            objective_description=data.get('description', ''),
-            doctor_evaluation=data.get('doctorEvaluation', ''),
-            follow_up_plan=data.get('followUpPlan', ''),
-            next_visit_plan=data.get('nextVisitPlan', ''),
-            crisis_status=data.get('crisisStatus', ''),
-            consultant_name=data.get('consultantName', counselor.name),
-            is_third_party_evaluation=data.get('isThirdPartyEvaluation', False),
-            signature_image=data.get('signatureImage', ''),
-            attach_images=data.get('attachImages', []),
+            interview_date=validated_data.get('date') or timezone.now().date(),
+            interview_time=validated_data.get('time', ''),
+            duration=int(validated_data.get('duration', 0)) if validated_data.get('duration') and str(validated_data.get('duration')).isdigit() else None,
+            visit_status=validated_data.get('visitStatus', 'scheduled'),
+            objective_description=validated_data.get('description', ''),
+            doctor_evaluation=validated_data.get('doctorEvaluation', ''),
+            follow_up_plan=validated_data.get('followUpPlan', ''),
+            next_visit_plan=validated_data.get('nextVisitPlan', ''),
+            crisis_status=_convert_crisis_status_to_string(validated_data.get('crisisStatus', [])),
+            consultant_name=validated_data.get('consultantName', counselor.name),
+            is_third_party_evaluation=validated_data.get('isThirdPartyEvaluation', False),
+            signature_image=signature_image,
+            attach_images=attach_images,
             created_by=counselor
         )
         
@@ -300,7 +437,26 @@ def session_update(request):
             created_by=counselor,
             record__counselor=counselor  # 双重验证：确保档案也属于当前咨询师
         )
-        data = request.data
+        
+        # 支持 form-data 和 JSON 两种格式
+        # 如果是 form-data，需要从 request.data 中获取文本字段，从 request.FILES 中获取文件
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        
+        # 处理 form-data 中的数组字段（如 crisisStatus）
+        # 在 form-data 中，数组可能以 JSON 字符串形式传递
+        if 'crisisStatus' in data:
+            crisis_status_value = data.get('crisisStatus')
+            if isinstance(crisis_status_value, str):
+                try:
+                    # 尝试解析 JSON 字符串
+                    crisis_status_value = json.loads(crisis_status_value)
+                except (json.JSONDecodeError, TypeError):
+                    # 如果不是 JSON，尝试按逗号分隔
+                    if ',' in crisis_status_value:
+                        crisis_status_value = [s.strip() for s in crisis_status_value.split(',') if s.strip()]
+                    else:
+                        crisis_status_value = [crisis_status_value] if crisis_status_value else []
+            data['crisisStatus'] = crisis_status_value if isinstance(crisis_status_value, list) else []
         
         # 更新字段
         if 'visitStatus' in data:
@@ -314,15 +470,111 @@ def session_update(request):
         if 'nextVisitPlan' in data:
             session.next_visit_plan = data.get('nextVisitPlan')
         if 'crisisStatus' in data:
-            session.crisis_status = data.get('crisisStatus')
+            session.crisis_status = _convert_crisis_status_to_string(data.get('crisisStatus', []))
         if 'consultantName' in data:
             session.consultant_name = data.get('consultantName')
         if 'isThirdPartyEvaluation' in data:
             session.is_third_party_evaluation = data.get('isThirdPartyEvaluation')
-        if 'signatureImage' in data:
+        # 处理签名图片文件上传（如果上传了新文件）
+        if 'signatureImage' in request.FILES:
+            import os
+            import time
+            from django.conf import settings
+            
+            # 删除旧文件（如果存在）
+            if session.signature_image:
+                old_file_path = os.path.join(settings.BASE_DIR, 'static', session.signature_image)
+                if os.path.exists(old_file_path):
+                    try:
+                        os.remove(old_file_path)
+                    except Exception:
+                        pass  # 如果删除失败，继续处理新文件
+            
+            # 处理新文件上传
+            uploaded_file = request.FILES['signatureImage']
+            # 检查文件类型（图片格式）
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+            if file_ext not in allowed_extensions:
+                return Response({
+                    'code': 400,
+                    'message': '签名图片格式不支持，请上传jpg、png、gif、bmp或webp格式的图片'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 确保目录存在
+            signature_dir = os.path.join(settings.BASE_DIR, 'static', 'session_signature')
+            os.makedirs(signature_dir, exist_ok=True)
+            
+            # 生成唯一文件名
+            timestamp = int(time.time() * 1000)
+            record_id = session.record.id
+            file_name = f"signature_{record_id}_{timestamp}{file_ext}"
+            
+            # 保存文件
+            file_path = os.path.join(signature_dir, file_name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            
+            # 更新相对路径到数据库（相对于static目录）
+            session.signature_image = f"session_signature/{file_name}"
+        elif 'signatureImage' in data:
+            # 如果只是字符串路径，直接更新
             session.signature_image = data.get('signatureImage')
-        if 'attachImages' in data:
-            session.attach_images = data.get('attachImages')
+        
+        # 处理附加图片文件上传（如果上传了新文件，支持多个文件）
+        if 'attachImages' in request.FILES:
+            import os
+            import time
+            from django.conf import settings
+            
+            # 删除旧文件（如果存在）
+            if session.attach_images and isinstance(session.attach_images, list):
+                for old_image_path in session.attach_images:
+                    if old_image_path:
+                        old_file_path = os.path.join(settings.BASE_DIR, 'static', old_image_path)
+                        if os.path.exists(old_file_path):
+                            try:
+                                os.remove(old_file_path)
+                            except Exception:
+                                pass  # 如果删除失败，继续处理新文件
+            
+            # 处理新文件上传
+            uploaded_files = request.FILES.getlist('attachImages')
+            
+            # 确保目录存在
+            attach_dir = os.path.join(settings.BASE_DIR, 'static', 'session_attach')
+            os.makedirs(attach_dir, exist_ok=True)
+            
+            attach_images = []
+            for index, uploaded_file in enumerate(uploaded_files):
+                # 检查文件类型（图片格式）
+                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+                file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+                if file_ext not in allowed_extensions:
+                    # 如果格式不支持，跳过这个文件
+                    continue
+                
+                # 生成唯一文件名
+                timestamp = int(time.time() * 1000)
+                record_id = session.record.id
+                file_name = f"attach_{record_id}_{timestamp}_{index + 1}{file_ext}"
+                
+                # 保存文件
+                file_path = os.path.join(attach_dir, file_name)
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
+                
+                # 保存相对路径（相对于static目录）
+                attach_images.append(f"session_attach/{file_name}")
+            
+            # 更新附加图片路径数组
+            if attach_images:
+                session.attach_images = attach_images
+        elif 'attachImages' in data:
+            # 如果只是数组路径，直接更新
+            session.attach_images = data.get('attachImages', [])
         
         session.save()
         

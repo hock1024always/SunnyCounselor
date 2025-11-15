@@ -798,3 +798,25 @@ def referral_management_delete(request):
         return Response({'code': '1', 'message': '删除成功'})
     except Exception as e:
         return Response({'code': '0', 'message': f'删除失败: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def interview_grade_list(request):
+    """POST 获取访谈评估表中所有年级名字（不重复）"""
+    # 查询所有非空的年级，去重并排序
+    grades = InterviewAssessment.objects.exclude(grade__isnull=True).exclude(grade='').values_list('grade', flat=True).distinct().order_by('grade')
+    grade_list = list(grades)
+    return Response({'data': grade_list})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def interview_class_list(request):
+    """POST 获取访谈评估表中所有班级名字（不重复）"""
+    # 查询所有非空的班级，去重并排序
+    classes = InterviewAssessment.objects.exclude(class_name__isnull=True).exclude(class_name='').values_list('class_name', flat=True).distinct().order_by('class_name')
+    class_list = list(classes)
+    return Response({'data': class_list})

@@ -111,6 +111,7 @@ class ConsultationRecord(models.Model):
         verbose_name='负责咨询师'
     )
     interview_count = models.IntegerField(default=0, verbose_name='总访谈次数')
+    interview_type = models.CharField(max_length=50, blank=True, null=True, verbose_name='访谈类型')
     current_status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active', verbose_name='档案状态')
     created_by = models.ForeignKey(
         Counselor,

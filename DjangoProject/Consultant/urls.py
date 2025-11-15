@@ -97,7 +97,7 @@ urlpatterns = [
     path('api/consultant/schedule/stop/conflict', schedule_stop_conflict, name='schedule_stop_conflict'),
     
     # ==================== 个人中心 ====================
-    path('api/consuntant/user/comments', comments, name='user_comments'),
+    path('api/consultant/comments', comments, name='user_comments'),
     path('api/consultant/user/profile', user_profile, name='user_profile'),
     path('api/consultant/user/updateProfile', update_profile, name='update_profile'),
     path('api/consultant/updateAvatar', update_avatar, name='update_avatar'),

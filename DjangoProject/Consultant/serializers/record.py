@@ -1,6 +1,7 @@
 """
 咨询档案相关序列化器
 """
+import json
 from rest_framework import serializers
 from Consultant.models import ConsultationRecord, ConsultationSession
 
@@ -12,9 +13,9 @@ class ConsultationRecordListSerializer(serializers.ModelSerializer):
     std_grade = serializers.CharField(source='grade', read_only=True)
     std_class = serializers.CharField(source='class_name', read_only=True)
     std_school = serializers.CharField(source='school', read_only=True)
-    interview_count = serializers.CharField(source='interview_count', read_only=True)
+    interview_count = serializers.IntegerField(read_only=True)
     interview_status = serializers.SerializerMethodField()
-    interview_type = serializers.CharField(read_only=True)
+    interview_type = serializers.SerializerMethodField()
     doctor_evaluation = serializers.SerializerMethodField()
     follow_up_plan = serializers.SerializerMethodField()
     create_time = serializers.DateTimeField(source='created_time', read_only=True)
@@ -49,6 +50,10 @@ class ConsultationRecordListSerializer(serializers.ModelSerializer):
         if latest_session:
             return latest_session.follow_up_plan or ''
         return ''
+    
+    def get_interview_type(self, obj):
+        """获取访谈类型"""
+        return obj.interview_type or ''
 
 
 class ConsultationRecordCreateSerializer(serializers.Serializer):
@@ -82,7 +87,7 @@ class ConsultationSessionDetailSerializer(serializers.ModelSerializer):
     doctorEvaluation = serializers.CharField(source='doctor_evaluation', read_only=True)
     followUpPlan = serializers.CharField(source='follow_up_plan', read_only=True)
     nextVisitPlan = serializers.CharField(source='next_visit_plan', read_only=True)
-    crisisStatus = serializers.CharField(source='crisis_status', read_only=True)
+    crisisStatus = serializers.SerializerMethodField()
     consultantName = serializers.CharField(source='consultant_name', read_only=True)
     signatureImage = serializers.CharField(source='signature_image', read_only=True)
     attachImage = serializers.SerializerMethodField()
@@ -117,6 +122,28 @@ class ConsultationSessionDetailSerializer(serializers.ModelSerializer):
         if obj.duration:
             return f"{obj.duration}分钟"
         return ''
+    
+    def get_crisisStatus(self, obj):
+        """获取危机状态（转换为数组）"""
+        if obj.crisis_status:
+            # 如果是字符串，尝试解析为数组
+            if isinstance(obj.crisis_status, str):
+                # 尝试按逗号分隔
+                if ',' in obj.crisis_status:
+                    return [s.strip() for s in obj.crisis_status.split(',') if s.strip()]
+                # 如果是JSON字符串，尝试解析
+                try:
+                    parsed = json.loads(obj.crisis_status)
+                    if isinstance(parsed, list):
+                        return parsed
+                    return [parsed] if parsed else []
+                except:
+                    # 如果不是JSON，返回单个元素的数组
+                    return [obj.crisis_status] if obj.crisis_status else []
+            # 如果已经是数组，直接返回
+            if isinstance(obj.crisis_status, list):
+                return obj.crisis_status
+        return []
 
 
 class ConsultationSessionCreateSerializer(serializers.Serializer):
@@ -137,7 +164,11 @@ class ConsultationSessionCreateSerializer(serializers.Serializer):
     doctorEvaluation = serializers.CharField(required=False, help_text='医生评定')
     followUpPlan = serializers.CharField(required=False, help_text='后续计划')
     nextVisitPlan = serializers.CharField(required=False, help_text='下次访谈计划')
-    crisisStatus = serializers.CharField(required=False, help_text='危机状态')
+    crisisStatus = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text='危机状态数组'
+    )
     consultantName = serializers.CharField(required=False, help_text='咨询师姓名')
     isThirdPartyEvaluation = serializers.BooleanField(required=False, help_text='是否为他评')
     signatureImage = serializers.CharField(required=False, help_text='签名图片')

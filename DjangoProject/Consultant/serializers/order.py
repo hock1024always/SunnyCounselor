@@ -21,10 +21,12 @@ class ConsultationOrderListSerializer(serializers.ModelSerializer):
     status = serializers.CharField(read_only=True)
     contact = serializers.CharField(source='contact_info', read_only=True)
     
+    name = serializers.SerializerMethodField()
+    
     class Meta:
         model = ConsultationOrder
         fields = [
-            'id', 'order_id', 'gender', 'age', 'type', 'key_word',
+            'id', 'order_id', 'name', 'gender', 'age', 'type', 'key_word',
             'date', 'time', 'commit_time', 'finish_time', 'status', 'contact'
         ]
     
@@ -55,6 +57,12 @@ class ConsultationOrderListSerializer(serializers.ModelSerializer):
             if isinstance(obj.counseling_keywords, list):
                 return ','.join(obj.counseling_keywords)
             return str(obj.counseling_keywords)
+        return ''
+    
+    def get_name(self, obj):
+        """获取来访者姓名"""
+        if obj.record:
+            return obj.record.client_name
         return ''
 
 

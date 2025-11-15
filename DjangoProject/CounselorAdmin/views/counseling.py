@@ -8,10 +8,31 @@ from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime, date
 from collections import defaultdict
+from django.db.models import Max
+from django.utils import timezone
 
 from CounselorAdmin.models import Appointment, Counselor, Schedule, Cancellation
 from CounselorAdmin.utils import require_body_auth
-from Consultant.models import CounselorProfile
+from Consultant.models import CounselorProfile, ConsultationRecord, ConsultationSession, ConsultantAuthToken
+from Consultant.serializers.record import ConsultationSessionDetailSerializer
+import json
+
+
+# ==================== 辅助函数 ====================
+
+def _convert_crisis_status_to_string(crisis_status):
+    """将危机状态数组转换为字符串存储"""
+    if not crisis_status:
+        return ''
+    if isinstance(crisis_status, list):
+        # 过滤空值并转换为字符串
+        filtered = [str(s).strip() for s in crisis_status if s and str(s).strip()]
+        if filtered:
+            # 使用JSON格式存储，便于后续解析
+            return json.dumps(filtered, ensure_ascii=False)
+        return ''
+    # 如果已经是字符串，直接返回
+    return str(crisis_status) if crisis_status else ''
 
 
 # ==================== 咨询统计 ====================
@@ -158,6 +179,59 @@ def consultants_list(request):
         result_data.append(result_item)
     
     return Response({'total': str(total), 'data': result_data})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def consultants_list_profile(request):
+    """POST 获取咨询师的账户信息和详细信息"""
+    data = request.data
+    counselor_id = data.get('id')
+    
+    if not counselor_id:
+        return Response({'message': '缺少id参数'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        counselor = Counselor.objects.get(id=counselor_id)
+        
+        # 获取咨询师的活跃token
+        active_token = ConsultantAuthToken.objects.filter(
+            counselor=counselor,
+            is_active=True
+        ).order_by('-created_time').first()
+        
+        token_value = active_token.token if active_token else ''
+        
+        # 获取咨询师详情
+        try:
+            profile = counselor.profile
+        except CounselorProfile.DoesNotExist:
+            profile = None
+        
+        # 构建返回数据
+        result = {
+            'user_id': str(counselor.id),
+            'token': token_value,
+            'id': str(counselor.id),
+            'data': {
+                'avatar': profile.avatar if profile and profile.avatar else '',
+                'graduated_school': profile.graduated_school if profile else '',
+                'address': profile.address if profile else '',
+                'profession': profile.profession if profile else '',
+                'introduction': profile.introduction if profile else '',
+                'education': profile.education if profile else '',
+                'skilled_filed': profile.skilled_filed if profile else '',
+                'serve_type': counselor.serve_type if counselor.serve_type else [],
+                'email': counselor.email if counselor.email else ''
+            }
+        }
+        
+        return Response(result)
+    except Counselor.DoesNotExist:
+        return Response({'message': '咨询师不存在'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'message': f'获取失败: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -925,3 +999,460 @@ def schedule_stop_list_conflict(request):
         })
     except Exception as e:
         return Response({'message': f'查询失败: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== 咨询档案 ====================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def record_profile(request):
+    """
+    POST 获取咨询档案的详细咨询记录（管理员端）
+    管理员可以查看所有档案的详细记录
+    """
+    record_id = request.data.get('id')
+    
+    if not record_id:
+        return Response({
+            'code': 400,
+            'message': '缺少档案ID'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # 管理员可以查看所有档案
+        record = ConsultationRecord.objects.get(id=record_id)
+        sessions = record.sessions.all().order_by('session_number')
+        
+        serializer = ConsultationSessionDetailSerializer(sessions, many=True)
+        
+        return Response({
+            'code': 0,
+            'message': '获取成功',
+            'data': serializer.data
+        })
+    except ConsultationRecord.DoesNotExist:
+        return Response({
+            'code': 404,
+            'message': '档案不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def session_create(request):
+    """
+    POST 新建一条咨询记录（管理员端）
+    管理员可以为任何档案创建会话
+    支持 JSON 和 form-data 两种格式
+    """
+    import os
+    import time
+    from django.conf import settings
+    
+    # 支持 form-data 和 JSON 两种格式
+    # 如果是 form-data，需要从 request.data 中获取文本字段，从 request.FILES 中获取文件
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    
+    # 处理 form-data 中的数组字段（如 crisisStatus）
+    # 在 form-data 中，数组可能以 JSON 字符串形式传递
+    if 'crisisStatus' in data:
+        crisis_status_value = data.get('crisisStatus')
+        if isinstance(crisis_status_value, str):
+            try:
+                # 尝试解析 JSON 字符串
+                crisis_status_value = json.loads(crisis_status_value)
+            except (json.JSONDecodeError, TypeError):
+                # 如果不是 JSON，尝试按逗号分隔
+                if ',' in crisis_status_value:
+                    crisis_status_value = [s.strip() for s in crisis_status_value.split(',') if s.strip()]
+                else:
+                    crisis_status_value = [crisis_status_value] if crisis_status_value else []
+        data['crisisStatus'] = crisis_status_value if isinstance(crisis_status_value, list) else []
+    
+    # 处理 attachImages（如果是 JSON 字符串）
+    if 'attachImages' in data and isinstance(data.get('attachImages'), str):
+        try:
+            data['attachImages'] = json.loads(data.get('attachImages'))
+        except (json.JSONDecodeError, TypeError):
+            data['attachImages'] = []
+    
+    # 文档中要求传入id作为咨询档案的id
+    record_id = data.get('id')
+    
+    if not record_id:
+        return Response({
+            'code': 400,
+            'message': '缺少档案ID'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        record = ConsultationRecord.objects.get(id=record_id)
+        
+        # 获取下一个会话编号
+        max_session = record.sessions.aggregate(Max('session_number'))
+        next_number = (max_session['session_number__max'] or 0) + 1
+        
+        # 处理签名图片文件上传
+        signature_image = ''
+        if 'signatureImage' in request.FILES:
+            uploaded_file = request.FILES['signatureImage']
+            # 检查文件类型（图片格式）
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+            if file_ext not in allowed_extensions:
+                return Response({
+                    'code': 400,
+                    'message': '签名图片格式不支持，请上传jpg、png、gif、bmp或webp格式的图片'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 确保目录存在
+            signature_dir = os.path.join(settings.BASE_DIR, 'static', 'session_signature')
+            os.makedirs(signature_dir, exist_ok=True)
+            
+            # 生成唯一文件名
+            timestamp = int(time.time() * 1000)
+            file_name = f"signature_{record_id}_{timestamp}{file_ext}"
+            
+            # 保存文件
+            file_path = os.path.join(signature_dir, file_name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            
+            # 保存相对路径到数据库（相对于static目录）
+            signature_image = f"session_signature/{file_name}"
+        
+        # 处理附加图片文件上传（支持多个文件）
+        attach_images = []
+        if 'attachImages' in request.FILES:
+            uploaded_files = request.FILES.getlist('attachImages')
+            
+            # 确保目录存在
+            attach_dir = os.path.join(settings.BASE_DIR, 'static', 'session_attach')
+            os.makedirs(attach_dir, exist_ok=True)
+            
+            for index, uploaded_file in enumerate(uploaded_files):
+                # 检查文件类型（图片格式）
+                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+                file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+                if file_ext not in allowed_extensions:
+                    # 如果格式不支持，跳过这个文件
+                    continue
+                
+                # 生成唯一文件名
+                timestamp = int(time.time() * 1000)
+                file_name = f"attach_{record_id}_{timestamp}_{index + 1}{file_ext}"
+                
+                # 保存文件
+                file_path = os.path.join(attach_dir, file_name)
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
+                
+            # 保存相对路径（相对于static目录）
+            attach_images.append(f"session_attach/{file_name}")
+        elif 'attachImages' in data:
+            # 如果只是数组路径，直接使用
+            attach_images = data.get('attachImages', [])
+            if not isinstance(attach_images, list):
+                attach_images = []
+        
+        # 处理日期字段
+        interview_date = timezone.now().date()
+        if data.get('date'):
+            try:
+                if isinstance(data.get('date'), str):
+                    interview_date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+                elif hasattr(data.get('date'), 'date'):
+                    interview_date = data.get('date').date()
+            except (ValueError, TypeError):
+                interview_date = timezone.now().date()
+        
+        # 处理 duration 字段
+        duration = None
+        if data.get('duration'):
+            try:
+                duration_value = data.get('duration')
+                if isinstance(duration_value, str) and duration_value.isdigit():
+                    duration = int(duration_value)
+                elif isinstance(duration_value, (int, float)):
+                    duration = int(duration_value)
+            except (ValueError, TypeError):
+                duration = None
+        
+        # 处理 isThirdPartyEvaluation 字段
+        is_third_party = False
+        if 'isThirdPartyEvaluation' in data:
+            is_third_party_value = data.get('isThirdPartyEvaluation')
+            if isinstance(is_third_party_value, bool):
+                is_third_party = is_third_party_value
+            elif isinstance(is_third_party_value, str):
+                is_third_party = is_third_party_value.lower() in ('true', '1', 'yes')
+            else:
+                is_third_party = bool(is_third_party_value)
+        
+        # 创建会话
+        session = ConsultationSession.objects.create(
+            record=record,
+            session_number=next_number,
+            interview_date=interview_date,
+            interview_time=data.get('time', ''),
+            duration=duration,
+            visit_status=data.get('visitStatus', 'scheduled'),
+            objective_description=data.get('description', ''),
+            doctor_evaluation=data.get('doctorEvaluation', ''),
+            follow_up_plan=data.get('followUpPlan', ''),
+            next_visit_plan=data.get('nextVisitPlan', ''),
+            crisis_status=_convert_crisis_status_to_string(data.get('crisisStatus', [])),
+            consultant_name=data.get('consultantName', ''),
+            is_third_party_evaluation=is_third_party,
+            signature_image=signature_image or data.get('signatureImage', ''),
+            attach_images=attach_images,
+            created_by=record.counselor  # 使用档案的咨询师作为创建人
+        )
+        
+        # 更新档案的访谈次数
+        record.interview_count = next_number
+        record.save(update_fields=['interview_count'])
+        
+        return Response({
+            'code': '0',
+            'message': '创建成功'
+        })
+    except ConsultationRecord.DoesNotExist:
+        return Response({
+            'code': 404,
+            'message': '档案不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'code': 500,
+            'message': f'创建失败: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def session_update(request):
+    """
+    POST 更新一条咨询记录（管理员端）
+    管理员可以更新任何会话
+    支持 form-data 和 JSON 两种格式
+    必选参数：user_id（用于鉴权）、token（用于鉴权）、id（记录id）
+    """
+    # 支持 form-data 和 JSON 两种格式
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    
+    # 检查必选参数：user_id 和 id
+    user_id = data.get('user_id') or data.get('userID')
+    session_id = data.get('id')
+    
+    if not user_id:
+        return Response({
+            'code': 400,
+            'message': '缺少user_id参数'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not session_id:
+        return Response({
+            'code': 400,
+            'message': '缺少id参数（记录id）'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        import os
+        import time
+        import json
+        from django.conf import settings
+        
+        session = ConsultationSession.objects.get(id=session_id)
+        
+        # 处理 form-data 中的数组字段（如 crisisStatus）
+        # 在 form-data 中，数组可能以 JSON 字符串形式传递
+        if 'crisisStatus' in data:
+            crisis_status_value = data.get('crisisStatus')
+            if isinstance(crisis_status_value, str):
+                try:
+                    # 尝试解析 JSON 字符串
+                    crisis_status_value = json.loads(crisis_status_value)
+                except (json.JSONDecodeError, TypeError):
+                    # 如果不是 JSON，尝试按逗号分隔
+                    if ',' in crisis_status_value:
+                        crisis_status_value = [s.strip() for s in crisis_status_value.split(',') if s.strip()]
+                    else:
+                        crisis_status_value = [crisis_status_value] if crisis_status_value else []
+            data['crisisStatus'] = crisis_status_value if isinstance(crisis_status_value, list) else []
+        
+        # 更新字段
+        if 'visitStatus' in data:
+            session.visit_status = data.get('visitStatus')
+        if 'description' in data:
+            session.objective_description = data.get('description')
+        if 'doctorEvaluation' in data:
+            session.doctor_evaluation = data.get('doctorEvaluation')
+        if 'followUpPlan' in data:
+            session.follow_up_plan = data.get('followUpPlan')
+        if 'nextVisitPlan' in data:
+            session.next_visit_plan = data.get('nextVisitPlan')
+        if 'crisisStatus' in data:
+            session.crisis_status = _convert_crisis_status_to_string(data.get('crisisStatus', []))
+        if 'consultantName' in data:
+            session.consultant_name = data.get('consultantName')
+        if 'isThirdPartyEvaluation' in data:
+            is_third_party = data.get('isThirdPartyEvaluation')
+            if isinstance(is_third_party, bool):
+                session.is_third_party_evaluation = is_third_party
+            else:
+                session.is_third_party_evaluation = str(is_third_party).lower() == 'true'
+        
+        # 处理签名图片文件上传（如果上传了新文件）
+        if 'signatureImage' in request.FILES:
+            # 删除旧文件（如果存在）
+            if session.signature_image:
+                old_file_path = os.path.join(settings.BASE_DIR, 'static', session.signature_image)
+                if os.path.exists(old_file_path):
+                    try:
+                        os.remove(old_file_path)
+                    except Exception:
+                        pass  # 如果删除失败，继续处理新文件
+            
+            # 处理新文件上传
+            uploaded_file = request.FILES['signatureImage']
+            # 检查文件类型（图片格式）
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+            if file_ext not in allowed_extensions:
+                return Response({
+                    'code': 400,
+                    'message': '签名图片格式不支持，请上传jpg、png、gif、bmp或webp格式的图片'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 确保目录存在
+            signature_dir = os.path.join(settings.BASE_DIR, 'static', 'session_signature')
+            os.makedirs(signature_dir, exist_ok=True)
+            
+            # 生成唯一文件名
+            timestamp = int(time.time() * 1000)
+            record_id = session.record.id
+            file_name = f"signature_{record_id}_{timestamp}{file_ext}"
+            
+            # 保存文件
+            file_path = os.path.join(signature_dir, file_name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            
+            # 更新相对路径到数据库（相对于static目录）
+            session.signature_image = f"session_signature/{file_name}"
+        
+        # 处理附加图片文件上传（如果上传了新文件，支持多个文件）
+        if 'attachImages' in request.FILES:
+            # 删除旧文件（如果存在）
+            if session.attach_images and isinstance(session.attach_images, list):
+                for old_image_path in session.attach_images:
+                    if old_image_path:
+                        old_file_path = os.path.join(settings.BASE_DIR, 'static', old_image_path)
+                        if os.path.exists(old_file_path):
+                            try:
+                                os.remove(old_file_path)
+                            except Exception:
+                                pass  # 如果删除失败，继续处理新文件
+            
+            # 处理新文件上传
+            uploaded_files = request.FILES.getlist('attachImages')
+            
+            # 确保目录存在
+            attach_dir = os.path.join(settings.BASE_DIR, 'static', 'session_attach')
+            os.makedirs(attach_dir, exist_ok=True)
+            
+            attach_images = []
+            for index, uploaded_file in enumerate(uploaded_files):
+                # 检查文件类型（图片格式）
+                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+                file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+                if file_ext not in allowed_extensions:
+                    # 如果格式不支持，跳过这个文件
+                    continue
+                
+                # 生成唯一文件名
+                timestamp = int(time.time() * 1000)
+                record_id = session.record.id
+                file_name = f"attach_{record_id}_{timestamp}_{index + 1}{file_ext}"
+                
+                # 保存文件
+                file_path = os.path.join(attach_dir, file_name)
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
+                
+                # 保存相对路径（相对于static目录）
+                attach_images.append(f"session_attach/{file_name}")
+            
+            # 更新附加图片路径数组
+            if attach_images:
+                session.attach_images = attach_images
+        
+        session.save()
+        
+        return Response({})
+    except ConsultationSession.DoesNotExist:
+        return Response({
+            'code': 404,
+            'message': '会话不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # 禁用DRF默认权限检查
+@require_body_auth  # 业务逻辑中的鉴权
+def personal_profile(request):
+    """
+    POST 获取个人档案（管理员端）
+    管理员可以查看所有档案的个人信息
+    """
+    record_id = request.data.get('id')
+    
+    if not record_id:
+        return Response({
+            'code': 400,
+            'message': '缺少档案ID'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        record = ConsultationRecord.objects.get(id=record_id)
+        
+        # 构建紧急联系人信息
+        emergency_contact = {}
+        if record.emergency_contact_name:
+            emergency_contact = {
+                'name': record.emergency_contact_name,
+                'relationship': '',  # 关系字段在模型中不存在，返回空
+                'phone': record.emergency_contact_phone or ''
+            }
+        
+        return Response({
+            'code': 'string',
+            'message': 'string',
+            'data': {
+                'name': record.client_name,
+                'id': str(record.id),
+                'gender': record.gender,
+                'age': str(record.age) if record.age else '',
+                'education': record.education or '',
+                'occupation': record.occupation or '',
+                'maritalStatus': '',  # 模型中不存在，返回空
+                'contact': record.contact or '',
+                'emergencyContact': emergency_contact,
+                'referral': record.referral_source or '',
+                'complaint': record.main_complaint or '',
+                'goal': record.consultation_goal or ''
+            }
+        })
+    except ConsultationRecord.DoesNotExist:
+        return Response({
+            'code': 404,
+            'message': '档案不存在'
+        }, status=status.HTTP_404_NOT_FOUND)

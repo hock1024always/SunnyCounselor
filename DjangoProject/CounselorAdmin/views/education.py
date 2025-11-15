@@ -375,10 +375,19 @@ def articles_update(request):
             obj.video_path = f"article_video/{file_name}"
             obj.video = ''  # 清空外部链接，因为使用上传的文件
         
-        # 更新其他字段
-        if 'category_name' in data:
-            category_name = data.get('category_name')
-            category = Category.objects.filter(category_name=category_name).first()
+        # 更新栏目信息（优先使用 category_id，如果没有则使用 category_name）
+        if 'category_id' in data or 'category_name' in data:
+            category = None
+            if data.get('category_id'):
+                try:
+                    category = Category.objects.get(id=data.get('category_id'))
+                except Category.DoesNotExist:
+                    return Response({'code': '0', 'message': '栏目不存在'}, status=status.HTTP_400_BAD_REQUEST)
+            elif data.get('category_name'):
+                category = Category.objects.filter(category_name=data.get('category_name')).first()
+                if not category:
+                    return Response({'code': '0', 'message': '栏目不存在'}, status=status.HTTP_400_BAD_REQUEST)
+            
             if category:
                 obj.category = category
         

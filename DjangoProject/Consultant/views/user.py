@@ -23,8 +23,9 @@ def comments(request):
     counselor = request.counselor
     data = request.data
     
+    # 支持两种参数名：pageSize 和 page_size
     page = int(data.get('page', 1))
-    page_size = int(data.get('pageSize', 10))
+    page_size = int(data.get('page_size', data.get('pageSize', 10)))
     
     reviews = ConsultationReview.objects.filter(
         counselor=counselor
@@ -50,12 +51,13 @@ def comments(request):
             'organization': '',
             'time': review.created_time.strftime('%Y-%m-%d %H:%M:%S'),
             'content': review.content or '',
-            'rating': str(review.rating)
+            'rating': review.rating
         })
     
     return Response({
         'code': 0,
         'message': '获取成功',
+        'total': total,
         'data': result_data
     })
 

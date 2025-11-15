@@ -27,31 +27,51 @@ def schedule_work(request):
     """POST 按年月份获取排班管理信息"""
     counselor = request.counselor
     data = request.data
-    year = data.get('year')
-    month = data.get('month')
-    organization = data.get('organization', '')
-    
-    if not year or not month:
+    try:
+        year = int(data.get('year'))
+        month = int(data.get('month'))
+    except (ValueError, TypeError):
         return Response({
             'code': 400,
-            'message': '年份和月份必填'
+            'message': '年份和月份必填且必须为数字'
         }, status=status.HTTP_400_BAD_REQUEST)
     
+    organization = data.get('organization', '')
+    
     # 查询该月的排班
-    schedules = CounselorSchedule.objects.filter(
-        counselor=counselor,
-        schedule_date__year=int(year),
-        schedule_date__month=int(month)
-    ).order_by('schedule_date')
+    try:
+        schedules = CounselorSchedule.objects.filter(
+            counselor=counselor,
+            schedule_date__year=year,
+            schedule_date__month=month
+        ).order_by('schedule_date')
+    except Exception as e:
+        return Response({
+            'code': 500,
+            'message': f'查询排班失败: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     # 按日期组织数据
     result = []
     for schedule in schedules:
         date = schedule.schedule_date.day
+        # work_time 改为数组类型
+        if isinstance(schedule.time_slots, list):
+            work_time = schedule.time_slots
+        elif schedule.time_slots:
+            # 如果是字符串，尝试解析
+            try:
+                work_time = json.loads(schedule.time_slots) if isinstance(schedule.time_slots, str) else [str(schedule.time_slots)]
+            except:
+                # 如果解析失败，按逗号分隔
+                work_time = [s.strip() for s in str(schedule.time_slots).split(',') if s.strip()]
+        else:
+            work_time = []
+        
         schedule_list = [{
             'id': schedule.id,
             'name': counselor.name,
-            'work_time': ', '.join(schedule.time_slots) if isinstance(schedule.time_slots, list) else str(schedule.time_slots)
+            'work_time': work_time
         }]
         
         result.append({
@@ -71,10 +91,10 @@ def schedule_work(request):
 @require_body_auth  # 业务逻辑中的鉴权
 def schedule_work_update(request):
     """
-    POST 全覆盖更新排班
+    POST 给单个日期添加或修改排班
     1. 根据上传用户的id进行逻辑鉴权
-    2. 删除该id下的所有排班数据库记录
-    3. 然后将前端传入的数据库记录全部写入数据库（全覆盖操作）
+    2. 只删除指定日期的排班数据库记录（不影响其他日期）
+    3. 创建或更新该日期的排班记录
     """
     counselor = request.counselor
     data = request.data
@@ -102,11 +122,7 @@ def schedule_work_update(request):
             'message': '无权修改其他咨询师的排班'
         }, status=status.HTTP_403_FORBIDDEN)
     
-    # 2. 删除该id下的所有排班数据库记录
-    deleted_count = CounselorSchedule.objects.filter(counselor=counselor).delete()[0]
-    
-    # 3. 将前端传入的数据库记录全部写入数据库（全覆盖操作）
-    # 支持两种格式：
+    # 2. 支持两种格式：
     # 1. schedules数组格式：多个排班记录
     # 2. 单个记录格式：year, month, date, work_schedules
     schedules_data = data.get('schedules', [])
@@ -130,16 +146,14 @@ def schedule_work_update(request):
     
     if not schedules_data:
         return Response({
-            'code': 0,
-            'message': '更新成功，已清空所有排班记录',
-            'data': {
-                'deleted_count': deleted_count,
-                'created_count': 0
-            }
-        })
+            'code': 400,
+            'message': '缺少排班数据'
+        }, status=status.HTTP_400_BAD_REQUEST)
     
-    # 批量创建排班记录
-    schedules_to_create = []
+    # 3. 处理每个日期的排班（只删除和更新指定日期，不影响其他日期）
+    updated_count = 0
+    created_count = 0
+    
     for schedule_item in schedules_data:
         try:
             # 解析日期信息
@@ -154,33 +168,40 @@ def schedule_work_update(request):
             # 构建日期
             schedule_date = datetime(int(year), int(month), int(date)).date()
             
+            # 只删除该日期的排班记录（不影响其他日期）
+            deleted_count = CounselorSchedule.objects.filter(
+                counselor=counselor,
+                schedule_date=schedule_date
+            ).delete()[0]
+            
             # 计算最大预约数和剩余可预约数
             max_appointments = len(work_schedules) * 5 if isinstance(work_schedules, list) else 5
             available_slots = max_appointments
             
-            schedules_to_create.append(
-                CounselorSchedule(
-                    counselor=counselor,
-                    schedule_date=schedule_date,
-                    time_slots=work_schedules if isinstance(work_schedules, list) else [],
-                    max_appointments=max_appointments,
-                    available_slots=available_slots
-                )
+            # 创建新的排班记录
+            CounselorSchedule.objects.create(
+                counselor=counselor,
+                schedule_date=schedule_date,
+                time_slots=work_schedules if isinstance(work_schedules, list) else [],
+                max_appointments=max_appointments,
+                available_slots=available_slots
             )
+            
+            if deleted_count > 0:
+                updated_count += 1
+            else:
+                created_count += 1
+                
         except Exception as e:
             # 跳过有错误的记录，继续处理其他记录
             continue
     
-    # 批量创建
-    if schedules_to_create:
-        CounselorSchedule.objects.bulk_create(schedules_to_create, batch_size=100)
-    
     return Response({
         'code': 0,
-        'message': f'更新成功，已删除{deleted_count}条记录，新增{len(schedules_to_create)}条记录',
+        'message': f'更新成功，已更新{updated_count}条记录，新增{created_count}条记录',
         'data': {
-            'deleted_count': deleted_count,
-            'created_count': len(schedules_to_create)
+            'updated_count': updated_count,
+            'created_count': created_count
         }
     })
 
@@ -419,14 +440,17 @@ def schedule_stop(request):
     result_data = []
     for item in items:
         result_data.append({
+            'id': str(item.id),
             'name': item.counselor.name,
             'start_time': item.cancel_start.strftime('%Y-%m-%d %H:%M') if item.cancel_start else '',
             'end_time': item.cancel_end.strftime('%Y-%m-%d %H:%M') if item.cancel_end else '',
+            'reason': item.reason or '',
         })
     
     return Response({
         'code': 0,
         'message': '获取成功',
+        'total': str(total),
         'data': result_data
     })
 

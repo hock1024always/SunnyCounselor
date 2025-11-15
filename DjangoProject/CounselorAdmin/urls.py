@@ -12,6 +12,8 @@ from CounselorAdmin.views.intervention import (
     interview_files_list,
     interview_files_upload,
     interview_files_download,
+    interview_grade_list,
+    interview_class_list,
     # 负面事件
     negative_events_list,
     negative_events_create,
@@ -59,6 +61,7 @@ from CounselorAdmin.views.counseling import (
     order_create,
     # 咨询师管理
     consultants_list,
+    consultants_list_profile,
     consultants_create,
     consultants_update,
     consultants_delete,
@@ -73,6 +76,11 @@ from CounselorAdmin.views.counseling import (
     schedule_stop_update,
     schedule_stop_delete,
     schedule_stop_list_conflict,
+    # 咨询档案
+    record_profile,
+    session_create,
+    session_update,
+    personal_profile,
 )
 
 urlpatterns = [
@@ -92,6 +100,8 @@ urlpatterns = [
     path('api/interview/files', interview_files_list),  # POST 模板列表
     path('api/admin/interview/files/upload', interview_files_upload),  # POST 模板上传
     path('api/admin/interview/files/download', interview_files_download),  # POST 模板下载
+    path('api/admin/interview/grade_list', interview_grade_list),  # POST 获取所有年级名字
+    path('api/admin/interview/class_list', interview_class_list),  # POST 获取所有班级名字
     
     # 负面事件
     path('api/admin/negative_events/list', negative_events_list),  # POST
@@ -144,7 +154,7 @@ urlpatterns = [
     
     # 咨询师管理
     path('api/admin/consultants/list', consultants_list),  # POST
-    path('api/admin/consultants/list/profile', consultants_list),  # POST (别名，兼容)
+    path('api/admin/consultants/list/profile', consultants_list_profile),  # POST 获取咨询师账户信息和详细信息
     path('api/admin/consultants/list/id_name', consultants_id_name_list),  # POST
     path('api/admin/consultants/create', consultants_create),  # POST
     path('api/admin/consultants/update', consultants_update),  # POST
@@ -160,4 +170,10 @@ urlpatterns = [
     path('api/admin/schedule/stop/update', schedule_stop_update),  # POST
     path('api/admin/schedule/stop/delete', schedule_stop_delete),  # POST
     path('api/admin/schedule/stop/list/conflict', schedule_stop_list_conflict),  # POST
+    
+    # 咨询档案
+    path('api/admin/interview/records/profile', record_profile),  # POST 获取咨询档案的详细咨询记录
+    path('api/admin/interview/records/profile/create', session_create),  # POST 新建一条咨询记录
+    path('api/admin/interview/records/profile/update', session_update),  # POST 更新一条咨询记录
+    path('api/admin/interview/records/personal-profile', personal_profile),  # POST 获取个人档案
 ]
